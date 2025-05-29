@@ -116,7 +116,7 @@ Wrapper that calls jira_tools.create_jira_issue_implementation and then JiraClie
                 summary=issue_data_for_client.pop("summary"),
                 description=issue_data_for_client.pop("description"),
                 issue_type=issue_data_for_client.pop("issue_type"),
-                assignee=assignee,
+                assignee=issue_data_for_client.pop("assignee"),
                 **issue_data_for_client # Remaining items (e.g. from additional_fields) go into kwargs
             )
             logger.info(f"JIRA issue creation response: {created_issue_response}")

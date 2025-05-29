@@ -12,6 +12,7 @@ def create_jira_issue_implementation(
     description: str, 
     issue_type: str = "Task", 
     site_alias: Optional[str] = None,
+    assignee: Optional[str] = None,
     additional_fields: Optional[Dict[str, Any]] = None # For any other fields
 ) -> Dict[str, Any]:
     """
@@ -57,7 +58,8 @@ def create_jira_issue_implementation(
             "project_key": project,
             "summary": summary,
             "description": description, # Pass the raw Markdown description
-            "issue_type": issue_type
+            "issue_type": issue_type,
+            "assignee": assignee
         }
         if additional_fields:
             issue_data.update(additional_fields) # Add any other fields passed in

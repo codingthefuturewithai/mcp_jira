@@ -40,7 +40,8 @@ class JiraClient:
         })
     
     def create_issue(self, project_key: str, summary: str, description: str, 
-                    issue_type: str = "Task", assignee: Optional[str] = None, **kwargs) -> Dict[str, Any]:
+                    issue_type: str = "Task", assignee: Optional[str] = None, 
+                    **kwargs) -> Dict[str, Any]:
         """
         Create a JIRA issue with markdown description converted to ADF.
         
@@ -72,13 +73,19 @@ class JiraClient:
                 }
             }
             
-            # Add any additional fields from kwargs
-            if kwargs:
-                issue_data["fields"].update(kwargs)
-            
-            # Add assignee if provided
+            # Convert dedicated parameters to additional_fields format
+            converted_fields = {}
             if assignee:
-                issue_data["fields"]["assignee"] = {"emailAddress": assignee}
+                converted_fields["assignee"] = {"emailAddress": assignee}
+            
+            # Merge converted fields with any existing kwargs
+            all_additional_fields = converted_fields
+            if kwargs:
+                all_additional_fields.update(kwargs)
+            
+            # Add all additional fields to issue data
+            if all_additional_fields:
+                issue_data["fields"].update(all_additional_fields)
             
             # Make API request
             url = f"{self.base_url}/rest/api/3/issue"
