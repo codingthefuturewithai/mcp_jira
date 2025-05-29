@@ -60,6 +60,7 @@ def register_tools(mcp_server: FastMCP, config: ServerConfig) -> None:
         description: str, # This will be Markdown input
         issue_type: str = "Task",
         site_alias: str = None,
+        assignee: str = None,
         additional_fields: Dict[str, Any] = None # For future flexibility
     ) -> types.TextContent:
         """
@@ -81,7 +82,7 @@ Wrapper that calls jira_tools.create_jira_issue_implementation and then JiraClie
 """
         logger.debug(
             f"create_jira_issue_tool received: project={project}, summary={summary}, "
-            f"issue_type={issue_type}, site_alias={site_alias}, additional_fields_present={additional_fields is not None}"
+            f"issue_type={issue_type}, site_alias={site_alias}, assignee={assignee}, additional_fields_present={additional_fields is not None}"
         )
         try:
             # 1. Get the prepared issue data (description converted to JIRA wiki)
@@ -93,6 +94,7 @@ Wrapper that calls jira_tools.create_jira_issue_implementation and then JiraClie
                 description=description, # Pass Markdown here
                 issue_type=issue_type,
                 site_alias=site_alias, # Pass along for consistency, though not used in current impl
+                assignee=assignee,
                 additional_fields=additional_fields
             )
             logger.debug(f"Data prepared by implementation: {issue_data_for_client}")
@@ -114,6 +116,7 @@ Wrapper that calls jira_tools.create_jira_issue_implementation and then JiraClie
                 summary=issue_data_for_client.pop("summary"),
                 description=issue_data_for_client.pop("description"),
                 issue_type=issue_data_for_client.pop("issue_type"),
+                assignee=assignee,
                 **issue_data_for_client # Remaining items (e.g. from additional_fields) go into kwargs
             )
             logger.info(f"JIRA issue creation response: {created_issue_response}")
