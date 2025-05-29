@@ -59,8 +59,8 @@ def register_tools(mcp_server: FastMCP, config: ServerConfig) -> None:
         summary: str,
         description: str, # This will be Markdown input
         issue_type: str = "Task",
-        site_alias: Optional[str] = None,
-        additional_fields: Optional[Dict[str, Any]] = None # For future flexibility
+        site_alias: str = None,
+        additional_fields: Dict[str, Any] = None # For future flexibility
     ) -> types.TextContent:
         """
 Instruction to LLM (for Jira ADF compatibility):
