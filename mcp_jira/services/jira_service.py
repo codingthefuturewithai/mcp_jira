@@ -7,51 +7,38 @@ and any JIRA-specific helper functions like markdown conversion.
 from atlassian import Jira
 from typing import Dict, Any, List # Added List for markdown_to_jira which splits lines
 
+from markdown2 import markdown # Added for Markdown to HTML
+from docbuilder import DocumentBuilder # Added for HTML to ADF
+
 # Custom exception for JIRA service related errors
 class JiraServiceError(Exception):
     pass
 
-# This function is now an exact replica of conduit's markdown_to_jira function
-def markdown_to_jira(content: str) -> str:
-    """Convert markdown content to Jira markup format.
-
-    Handles common markdown elements and converts them to Jira's expected format:
-    - Headers (# -> h1. ## -> h2. etc)
-    - Lists (- or * -> -)
-    - Code blocks (``` -> {code})
-    - Inline code (` -> {{)
+# Renamed and updated to convert Markdown to ADF via HTML
+def convert_markdown_to_adf(markdown_input: str) -> Dict[str, Any]:
+    """Convert markdown content to Atlassian Document Format (ADF)
+    by first converting Markdown to HTML, then HTML to ADF.
     """
-    lines = content.split("\\n")
-    converted_lines = []
+    if not markdown_input:
+        # Return an empty ADF document if input is empty
+        return DocumentBuilder().paragraph().end().build() # Or more simply: {"type": "doc", "version": 1, "content": []}
 
-    for line in lines:
-        # Convert headers
-        if line.startswith("# "):
-            line = "h1. " + line[2:]
-        elif line.startswith("## "):
-            line = "h2. " + line[3:]
-        elif line.startswith("### "):
-            line = "h3. " + line[4:]
+    try:
+        # Add extensions for better Markdown compatibility, e.g., fenced-code-blocks
+        html_output = markdown(markdown_input, extras=["fenced-code-blocks", "tables", "strike"])
+        
+        # Ensure DocumentBuilder is robust against potentially empty/malformed HTML from markdown2 if input is odd
+        if not html_output.strip(): 
+             return {"type": "doc", "version": 1, "content": []} # Handle cases where HTML is empty
 
-        # Convert list items (preserve existing list numbers if present)
-        elif line.strip().startswith("- "):
-            line = "* " + line[2:]
-        elif line.strip().startswith("* "):
-            line = "* " + line[2:]
-
-        # Convert inline code
-        if "`" in line:
-            # Handle inline code (single backticks)
-            while "`" in line:
-                if line.count("`") >= 2:
-                    line = line.replace("`", "{{", 1).replace("`", "}}", 1)
-                else:
-                    # If there's an unpaired backtick, just replace it
-                    line = line.replace("`", "{{")
-
-        converted_lines.append(line)
-
-    return "\\n".join(converted_lines)
+        adf_document = DocumentBuilder.from_html(html_output).build()
+        return adf_document
+    except Exception as e:
+        # Log the error and perhaps return a simple ADF paragraph with the error or fallback content
+        # For now, re-raising as a JiraServiceError to make it visible
+        # In a production system, might want to return a valid empty ADF or error ADF
+        # print(f"Error during Markdown to ADF conversion: {e}") # Optional: for server-side logging
+        raise JiraServiceError(f"Failed to convert Markdown to ADF: {e}")
 
 
 class JiraClient:
@@ -92,11 +79,10 @@ class JiraClient:
             JiraServiceError: If the API call fails.
         """
         try:
-            # Restore getting description from kwargs and calling markdown_to_jira
             description_markdown = kwargs.get("description", "") 
-            jira_formatted_description = "" 
+            adf_description = {"type": "doc", "version": 1, "content": []} # Default empty ADF
             if description_markdown:
-                jira_formatted_description = markdown_to_jira(description_markdown)
+                adf_description = convert_markdown_to_adf(description_markdown) # Call new ADF conversion
 
             project_arg = kwargs.get("project")
             if not isinstance(project_arg, dict) or "key" not in project_arg:
@@ -117,7 +103,7 @@ class JiraClient:
             fields = {
                 "project": {"key": project_arg["key"]},
                 "summary": summary_arg,
-                "description": jira_formatted_description, # Use the JIRA wiki markup string from markdown_to_jira
+                "description": adf_description, # Use the ADF dictionary here
                 "issuetype": {"name": issuetype_name},
             }
             

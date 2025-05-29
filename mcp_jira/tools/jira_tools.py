@@ -4,7 +4,7 @@ Functions here are called by the tool wrappers in server/app.py.
 """
 
 from typing import Dict, Any
-from mcp_jira.services.jira_service import JiraClient, JiraServiceError
+from mcp_jira.services.jira_service import JiraClient, JiraServiceError, convert_markdown_to_adf
 
 def create_jira_issue_implementation(
     jira_client: JiraClient, 

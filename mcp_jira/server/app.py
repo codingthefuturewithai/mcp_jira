@@ -11,7 +11,7 @@ from mcp.server.fastmcp import FastMCP
 from mcp_jira.config import ServerConfig, JiraSiteConfig, load_config, ConfigurationError, get_active_jira_config
 from mcp_jira.logging_config import setup_logging, logger
 from mcp_jira.tools.echo import echo
-from mcp_jira.services.jira_service import JiraClient, JiraServiceError, markdown_to_jira
+from mcp_jira.services.jira_service import JiraClient, JiraServiceError, convert_markdown_to_adf
 from mcp_jira.tools import jira_tools
 
 
