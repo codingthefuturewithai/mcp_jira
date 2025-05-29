@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mcp_jira"
+version = "0.1.0"
+description = "MCP server for integration with Atlassian's Jira product."
+readme = "README.md"
+authors = [
+    {name = "Tim Kitchens", email = "timkitch@codingthefuture.ai"}
+]
+license = {text = "MIT"}
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "mcp>=1.0.0",
+    "mcp[cli]>=1.0.0",
+    "anyio>=4.5",
+    "starlette>=0.36.0",
+    "uvicorn>=0.27.0",
+    "atlassian-python-api>=3.41.0",
+    "PyYAML>=6.0",
+    "platformdirs>=4.0.0",
+]
+
+[project.scripts]
+# Single entry point for server that handles both transports
+mcp_jira-server = "mcp_jira.server.app:main"
+mcp_jira-client = "mcp_jira.client.app:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["mcp_jira*"]
+namespaces = false 
