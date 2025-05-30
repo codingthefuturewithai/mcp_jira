@@ -1,60 +1,42 @@
-# MCP Jira
+# MCP JIRA Server
 
-**[➡️ REPLACE: Write a clear, concise description of your MCP server's purpose. What problems does it solve? What capabilities does it provide to AI tools?]**
+A Model Context Protocol (MCP) server that provides seamless JIRA integration for AI tools. Create and manage JIRA issues with rich markdown formatting, automatic conversion to Atlassian Document Format (ADF), and flexible field management.
 
 ## Overview
 
-**[➡️ REPLACE: Provide a more detailed explanation of your MCP server's architecture, key components, and how it integrates with AI tools. What makes it unique or valuable?]**
+This MCP server enables AI assistants to interact directly with JIRA instances through the JIRA REST API v3. It handles the complexity of markdown-to-ADF conversion, field mapping, and multi-site configuration, allowing AI tools to create well-formatted JIRA issues with minimal setup.
+
+Key architectural components:
+- **MCP Server**: FastMCP-based server with stdio/SSE transport support
+- **JIRA Client**: Direct REST API integration with authentication handling
+- **Markdown Converter**: Converts markdown to Atlassian Document Format (ADF)
+- **Configuration System**: Multi-site JIRA configuration with flexible site selection
+- **Field Management**: Support for both standard and custom JIRA fields
 
 ## Features
 
-**[➡️ REPLACE: List the key features of your MCP server. Some examples:]
-- What unique tools does it provide?
-- What data sources can it access?
-- What special capabilities does it have?
-- What performance characteristics are notable?
-- What integrations does it support?**
+- **Rich Markdown Support**: Convert markdown descriptions to properly formatted ADF with support for:
+  - Headers, paragraphs, and text formatting (bold, italic, inline code)
+  - Fenced code blocks with syntax highlighting
+  - Bullet and numbered lists
+  - Tables and complex formatting elements
+
+- **Flexible Field Management**: 
+  - Standard fields: project, summary, description, issue type, assignee
+  - Additional fields via `additional_fields` parameter for labels, priority, due dates, components, etc.
+  - Graceful degradation for unavailable fields across different JIRA configurations
+
+- **Multi-Site Configuration**: Support for multiple JIRA instances with site aliases
+- **Comprehensive Error Handling**: Detailed error messages and logging
+- **Transport Flexibility**: Support for both stdio and SSE transport modes
 
 ## Installation
-
-### From PyPI (if published)
-
-There are two main ways to use the server if it's published on PyPI:
-
-**Option 1: Install and then Run (Recommended for regular use)**
-
-First, install the package into your Python environment using UV:
-```bash
-# Install using UV
-uv pip install mcp_jira
-
-# If you don't have UV, you can use pip:
-# pip install mcp_jira
-```
-
-Once installed, you can run the server from your terminal:
-```bash
-mcp_jira-server
-```
-
-**Option 2: Run Directly with `uvx` (For quick use without permanent installation)**
-
-If you want to run the server without installing it into your current environment (or to run a specific version easily), you can use `uvx`. This is handy for one-off tasks or testing.
-
-```bash
-# Run the latest version of the server directly from PyPI
-uvx mcp_jira mcp_jira-server
-
-# You can also specify a version:
-# uvx mcp_jira==1.2.3 mcp_jira-server
-```
-This command tells `uvx` to fetch the `mcp_jira` package and execute its `mcp_jira-server` command.
 
 ### From Source
 
 ```bash
 # Clone the repository
-git clone <your-repository-url>
+git clone https://github.com/codingthefuturewithai/mcp_jira.git
 cd mcp_jira
 
 # Create and activate a virtual environment using UV
@@ -65,39 +47,139 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 uv pip install -e .
 ```
 
+## Configuration
+
+### JIRA Configuration
+
+Create a configuration file at one of these locations:
+- `~/.config/mcp-servers/mcp_jira.yaml` (Linux/macOS)
+- `%APPDATA%\mcp-servers\mcp_jira.yaml` (Windows)
+- Set `MCP_JIRA_CONFIG_PATH` environment variable to specify custom location
+
+Example configuration:
+```yaml
+name: "MCP JIRA Server"
+default_site_alias: "main"
+sites:
+  main:
+    url: "https://your-domain.atlassian.net"
+    email: "your-email@example.com"
+    api_token: "your-api-token"
+  staging:
+    url: "https://staging-domain.atlassian.net"
+    email: "your-email@example.com"
+    api_token: "staging-api-token"
+logging:
+  level: "INFO"
+  max_file_size_mb: 10
+  backup_count: 5
+```
+
+### JIRA API Token
+
+1. Log into your JIRA instance
+2. Go to Account Settings → Security → API Tokens
+3. Create a new API token
+4. Add the token to your configuration file
+
 ## Available Tools
 
-### tool_name
+### create_jira_issue
 
-**[➡️ REPLACE: For each tool in your MCP server, document:]
-- What the tool does
-- Its parameters and their types
-- What it returns
-- Example usage and expected output
-- Any limitations or important notes**
+Creates a new JIRA issue with markdown description converted to ADF format.
 
-Example:
-```bash
-# Using stdio transport (default)
-mcp_jira-client "your command here"
+**Parameters:**
+- `project` (string, required): JIRA project key (e.g., "ACT", "DEV")
+- `summary` (string, required): Issue summary/title
+- `description` (string, required): Issue description in markdown format
+- `issue_type` (string, optional): Issue type (default: "Task")
+- `site_alias` (string, optional): Which JIRA site to use (default: configured default)
+- `assignee` (string, optional): Assignee email address
+- `additional_fields` (object, optional): Additional JIRA fields as key-value pairs
 
-# Using SSE transport
-mcp_jira-server --transport sse
-curl http://localhost:3001/sse
+**Example Usage:**
+```json
+{
+  "project": "ACT",
+  "summary": "Implement user authentication feature",
+  "description": "# Authentication Feature\n\nImplement OAuth2 authentication:\n\n- [ ] Set up OAuth provider\n- [ ] Create login/logout endpoints\n- [ ] Add session management\n\n```python\ndef authenticate_user(token):\n    return validate_token(token)\n```",
+  "assignee": "developer@example.com",
+  "additional_fields": {
+    "labels": ["security", "authentication"],
+    "priority": {"name": "High"},
+    "duedate": "2024-03-01"
+  }
+}
+```
+
+**Returns:**
+```
+Successfully created JIRA issue: ACT-123 (ID: 10001). URL: https://your-domain.atlassian.net/browse/ACT-123
 ```
 
 ## Usage
 
-This MCP server provides two entry points:
+### Run the MCP Server
 
-1. `mcp_jira-server`: The MCP server that handles tool requests
-   ```bash
-   # Run with stdio transport (default)
-   mcp_jira-server
+```bash
+# Run with stdio transport (default)
+mcp_jira-server
 
-   # Run with SSE transport
-   mcp_jira-server --transport sse
-   ```
+# Run with SSE transport
+mcp_jira-server --transport sse --port 3001
+
+# Use custom configuration file
+mcp_jira-server --config /path/to/config.yaml
+```
+
+### Example: Creating a JIRA Issue
+
+```python
+# Example markdown description with rich formatting
+description = """
+# Bug Report: Login Page Issue
+
+## Problem Description
+Users are experiencing login failures when using special characters in passwords.
+
+## Steps to Reproduce
+1. Navigate to login page
+2. Enter username with special characters: `user+test@example.com`
+3. Enter password with symbols: `P@ssw0rd!`
+4. Click "Login" button
+
+## Expected vs Actual
+- **Expected**: User should be logged in successfully
+- **Actual**: Error message "Invalid credentials"
+
+## Code Investigation
+Found issue in validation function:
+
+```python
+def validate_password(password):
+    # This regex is too restrictive
+    pattern = r'^[a-zA-Z0-9]+$'  # Missing special chars!
+    return re.match(pattern, password)
+```
+
+## Fix Required
+Update regex pattern to allow special characters in password validation.
+"""
+
+# Create the issue
+create_jira_issue(
+    project="BUG",
+    summary="Login fails with special characters in password",
+    description=description,
+    issue_type="Bug",
+    assignee="security-team@example.com",
+    additional_fields={
+        "labels": ["security", "login", "urgent"],
+        "priority": {"name": "High"},
+        "components": [{"name": "Authentication"}]
+    }
+)
+```
 
 ## Logging
 
@@ -111,53 +193,52 @@ The server logs all activity to both stderr and a rotating log file. Log files a
 
 Log files are automatically rotated when they reach 10MB, with up to 5 backup files kept.
 
-You can configure the log level using the `LOG_LEVEL` environment variable:
+Configure log level using the `LOG_LEVEL` environment variable:
 ```bash
-# Set log level to DEBUG for more detailed logging
+# Set log level to DEBUG for detailed API communication
 LOG_LEVEL=DEBUG mcp_jira-server
 ```
 
-Valid log levels are: DEBUG, INFO (default), WARNING, ERROR, CRITICAL
-
-2. `mcp_jira-client`: A convenience client for testing
-   ```bash
-   mcp_jira-client "your command here"
-   ```
-
-**[➡️ REPLACE: Add any additional usage examples, common patterns, or best practices specific to your tools]**
+Valid log levels: DEBUG, INFO (default), WARNING, ERROR, CRITICAL
 
 ## Requirements
 
 - Python 3.11 or later (< 3.13)
 - Operating Systems: Linux, macOS, Windows
-
-**[➡️ REPLACE: Add any additional requirements specific to your MCP server:]
-- Special system dependencies
-- External services or APIs needed
-- Network access requirements
-- Hardware requirements (if any)**
-
-## Configuration
-
-**[➡️ REPLACE: Document any configuration options your MCP server supports:]
-- Environment variables
-- Configuration files
-- Command-line options
-- API keys or credentials needed
-
-Remove this section if your server requires no configuration.**
+- Network access to JIRA instance(s)
+- Valid JIRA API token(s)
 
 ## Development
 
-See [DEVELOPMENT.md](DEVELOPMENT.md) for detailed development instructions.
-
-**[➡️ REPLACE: Add any project-specific development notes, guidelines, or requirements]**
+See [DEVELOPMENT.md](DEVELOPMENT.md) for detailed development instructions, including:
+- Setting up the development environment
+- Running tests
+- Contributing guidelines
+- Architecture overview
 
 ## Troubleshooting
 
-Common issues and their solutions:
+### Common Issues
 
-**[➡️ REPLACE: Add troubleshooting guidance specific to your MCP server. Remove this section if not needed.]**
+**Authentication Errors**
+- Verify API token is correct and hasn't expired
+- Ensure email address matches JIRA account
+- Check JIRA instance URL is accessible
+
+**Field Errors**
+- Use `additional_fields` for custom or optional fields
+- Check field availability in your JIRA configuration
+- Server gracefully ignores unavailable fields
+
+**Markdown Conversion Issues**
+- Ensure fenced code blocks use proper syntax
+- Complex tables may need manual formatting
+- Check logs for conversion warnings
+
+**Connection Issues**
+- Verify network connectivity to JIRA instance
+- Check firewall/proxy settings
+- Ensure JIRA REST API v3 is accessible
 
 ## License
 
@@ -165,8 +246,6 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 ## Author
 
-**[➡️ REPLACE: Add your name and contact information]**
-
----
-
-[Replace this example Echo server README with documentation specific to your MCP server. Use this structure as a template, but customize all sections to describe your server's actual functionality, tools, and configuration options.]
+**Coding the Future with AI**
+- GitHub: [codingthefuturewithai](https://github.com/codingthefuturewithai)
+- Email: codingthefuturewithai@gmail.com
