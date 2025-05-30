@@ -21,14 +21,15 @@ Key architectural components:
   - Bullet and numbered lists
   - Tables and complex formatting elements
 
-- **Flexible Field Management**: 
-  - Standard fields: project, summary, description, issue type, assignee
-  - Additional fields via `additional_fields` parameter for labels, priority, due dates, components, etc.
-  - Graceful degradation for unavailable fields across different JIRA configurations
+- **Flexible Field Management**:
+  - Create and update JIRA issues with standard fields: project, summary, description, issue type.
+  - Robust assignee handling: Provide an email address, and the server resolves it to the correct JIRA `accountId` for reliable assignment.
+  - `additional_fields` parameter supports labels, priority, due dates, and other custom fields.
+  - Graceful degradation for unavailable fields across different JIRA configurations.
 
-- **Multi-Site Configuration**: Support for multiple JIRA instances with site aliases
-- **Comprehensive Error Handling**: Detailed error messages and logging
-- **Transport Flexibility**: Support for both stdio and SSE transport modes
+- **Multi-Site Configuration**: Support for multiple JIRA instances with site aliases, configurable in `config.yaml`.
+- **Comprehensive Error Handling**: Detailed error messages and logging.
+- **Transport Flexibility**: Support for both stdio and SSE transport modes.
 
 ## Installation
 
@@ -51,36 +52,52 @@ uv pip install -e .
 
 ### JIRA Configuration
 
-Create a configuration file at one of these locations:
-- `~/.config/mcp-servers/mcp_jira.yaml` (Linux/macOS)
-- `%APPDATA%\mcp-servers\mcp_jira.yaml` (Windows)
-- Set `MCP_JIRA_CONFIG_PATH` environment variable to specify custom location
+The server requires a `config.yaml` file to connect to your JIRA instance(s). The server will attempt to load this file from the following locations, in order of precedence:
 
-Example configuration:
+1.  The path specified by the `--config` command-line argument.
+2.  The path specified by the `MCP_JIRA_CONFIG_PATH` environment variable.
+3.  The default OS-specific user configuration directory:
+    *   **Linux**: `~/.config/mcp_jira/config.yaml`
+    *   **macOS**: `~/Library/Application Support/mcp_jira/config.yaml`
+    *   **Windows**: `%APPDATA%\MCPJira\mcp_jira\config.yaml` (Note: `%APPDATA%` usually resolves to `C:\Users\<username>\AppData\Roaming`)
+
+If the configuration file is not found at any of these locations, the server will automatically create the necessary directory (if it doesn't exist) and a template `config.yaml` file at the default OS-specific path. You will then need to edit this template with your actual JIRA site details.
+
+Example of a filled-in `config.yaml`:
 ```yaml
-name: "MCP JIRA Server"
-default_site_alias: "main"
+name: "My Company JIRA Integration"
+log_level: "INFO" # Supported levels: DEBUG, INFO, WARNING, ERROR, CRITICAL
+
+default_site_alias: "prod_jira"
+
 sites:
-  main:
-    url: "https://your-domain.atlassian.net"
-    email: "your-email@example.com"
-    api_token: "your-api-token"
-  staging:
-    url: "https://staging-domain.atlassian.net"
-    email: "your-email@example.com"
-    api_token: "staging-api-token"
-logging:
-  level: "INFO"
-  max_file_size_mb: 10
-  backup_count: 5
+  prod_jira:
+    url: "https://mycompany.atlassian.net"
+    email: "automation-user@mycompany.com"
+    api_token: "abc123xyz789efg_your_token_here_jkl"
+    cloud: true
+
+  dev_jira:
+    url: "https://dev-mycompany.atlassian.net"
+    email: "dev-automation@mycompany.com"
+    api_token: "another_token_for_dev_environment"
+    cloud: true
+
+# Optional: Advanced logging configuration (defaults are usually sufficient)
+# log_file_path: "/var/log/custom_mcp_jira/activity.log" # Overrides default log file paths
+# log_max_bytes: 20971520  # Max log file size in bytes (e.g., 20MB)
+# log_backup_count: 10     # Number of backup log files to keep
 ```
 
 ### JIRA API Token
 
-1. Log into your JIRA instance
-2. Go to Account Settings → Security → API Tokens
-3. Create a new API token
-4. Add the token to your configuration file
+1. Log into your JIRA instance.
+2. Go to **Account Settings** (usually by clicking your avatar/profile picture).
+3. Navigate to **Security** > **API token** (the exact path might vary slightly depending on your JIRA version).
+4. Click **Create API token**.
+5. Give your token a descriptive label (e.g., `mcp_jira_server_token`).
+6. Copy the generated token immediately. **You will not be able to see it again.**
+7. Add the copied token to your `config.yaml` file.
 
 ## Available Tools
 
@@ -102,7 +119,7 @@ Creates a new JIRA issue with markdown description converted to ADF format.
 {
   "project": "ACT",
   "summary": "Implement user authentication feature",
-  "description": "# Authentication Feature\n\nImplement OAuth2 authentication:\n\n- [ ] Set up OAuth provider\n- [ ] Create login/logout endpoints\n- [ ] Add session management\n\n```python\ndef authenticate_user(token):\n    return validate_token(token)\n```",
+  "description": "# Authentication Feature\n\nImplement OAuth2 authentication:\n\n- [ ] Set up OAuth provider\n- [ ] Create login/logout endpoints\n- [ ] Add session management\n\n```python\ndef authenticate_user(token):\n    # Validates the provided token\n    return validate_token(token)\n```",
   "assignee": "developer@example.com",
   "additional_fields": {
     "labels": ["security", "authentication"],
@@ -115,6 +132,39 @@ Creates a new JIRA issue with markdown description converted to ADF format.
 **Returns:**
 ```
 Successfully created JIRA issue: ACT-123 (ID: 10001). URL: https://your-domain.atlassian.net/browse/ACT-123
+```
+
+### update_jira_issue
+
+Updates an existing JIRA issue. Only provided fields will be updated.
+
+**Parameters:**
+- `issue_key` (string, required): The key of the JIRA issue to update (e.g., "ACT-123").
+- `summary` (string, optional): New issue summary/title.
+- `description` (string, optional): New issue description in markdown format. Converts to ADF.
+- `assignee` (string, optional): New assignee's email address. To unassign, provide an empty string `""` or `null` (behavior then depends on JIRA project's default assignee settings).
+- `additional_fields` (object, optional): Additional JIRA fields to update, as key-value pairs (e.g., labels, priority, due date).
+- `issue_type` (string, optional): New issue type (e.g., "Bug", "Story"). Note: Changing issue types can be restricted by JIRA workflow configurations.
+- `site_alias` (string, optional): Which JIRA site to use (defaults to the `default_site_alias` in `config.yaml`).
+
+**Example Usage:**
+```json
+{
+  "issue_key": "ACT-123",
+  "summary": "Implement user authentication feature (updated)",
+  "description": "# Authentication Feature (Revised)\n\nOAuth2 implementation details:\n\n- [x] Set up OAuth provider\n- [ ] Create login/logout endpoints (in progress)\n- [ ] Add session management\n\n```python\ndef authenticate_user(token):\n    # Validates the provided token securely\n    return secure_validate_token(token)\n```",
+  "assignee": "another.developer@example.com",
+  "additional_fields": {
+    "labels": ["security", "authentication", "oauth2"],
+    "priority": {"name": "Highest"},
+    "duedate": "2024-03-15"
+  }
+}
+```
+
+**Returns:**
+```
+Successfully updated JIRA issue: ACT-123. URL: https://your-domain.atlassian.net/browse/ACT-123
 ```
 
 ## Usage
@@ -183,23 +233,25 @@ create_jira_issue(
 
 ## Logging
 
-The server logs all activity to both stderr and a rotating log file. Log files are stored in OS-specific locations:
+The server logs activity to both stderr and a rotating log file.
 
-- **macOS**: `~/Library/Logs/mcp-servers/mcp_jira.log`
-- **Linux**: 
-  - Root user: `/var/log/mcp-servers/mcp_jira.log`
-  - Non-root: `~/.local/state/mcp-servers/logs/mcp_jira.log`
-- **Windows**: `%USERPROFILE%\AppData\Local\mcp-servers\logs\mcp_jira.log`
+**Log File Locations:**
+Log files are stored in OS-specific locations by default:
+- **macOS**: `~/Library/Logs/mcp_jira/mcp_jira.log`
+- **Linux**:
+  - If running as root: `/var/log/mcp_jira/mcp_jira.log`
+  - If running as non-root: `~/.local/state/mcp_jira/mcp_jira.log`
+- **Windows**: `%LOCALAPPDATA%\MCPJira\mcp_jira\Logs\mcp_jira.log` (Note: `%LOCALAPPDATA%` usually resolves to `C:\Users\<username>\AppData\Local`)
 
-Log files are automatically rotated when they reach 10MB, with up to 5 backup files kept.
+**Configuration:**
+Logging behavior (level, file path, rotation settings) is configured via the `config.yaml` file. See the example `config.yaml` in the "Configuration" section for details on `log_level`, `log_file_path`, `log_max_bytes`, and `log_backup_count`.
 
-Configure log level using the `LOG_LEVEL` environment variable:
+The log level can also be overridden using the `MCP_JIRA_LOG_LEVEL` environment variable. If set, this environment variable takes precedence over the `log_level` in `config.yaml`.
 ```bash
-# Set log level to DEBUG for detailed API communication
-LOG_LEVEL=DEBUG mcp_jira-server
+# Example: Set log level to DEBUG for detailed API communication
+MCP_JIRA_LOG_LEVEL=DEBUG mcp_jira-server
 ```
-
-Valid log levels: DEBUG, INFO (default), WARNING, ERROR, CRITICAL
+Valid log levels: `DEBUG`, `INFO` (default if not specified), `WARNING`, `ERROR`, `CRITICAL`.
 
 ## Requirements
 

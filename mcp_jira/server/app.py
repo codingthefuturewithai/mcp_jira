@@ -146,6 +146,84 @@ Wrapper that calls jira_tools.create_jira_issue_implementation and then JiraClie
                 format="text/plain"
             )
 
+    @mcp_server.tool(
+        name="update_jira_issue",
+        description="Updates an existing JIRA issue. Only provided fields will be updated.",
+    )
+    def update_jira_issue_tool(
+        issue_key: str,  # Required - which issue to update
+        summary: str = None,
+        description: str = None,  # This will be Markdown input
+        issue_type: str = None,
+        site_alias: str = None,
+        assignee: str = None,
+        additional_fields: Dict[str, Any] = None  # For future flexibility
+    ) -> types.TextContent:
+        """
+        Update an existing JIRA issue with markdown description converted to ADF.
+        Only provided (non-None) fields will be updated.
+        """
+        logger.debug(
+            f"update_jira_issue_tool received: issue_key={issue_key}, summary={summary is not None}, "
+            f"description={description is not None}, issue_type={issue_type}, site_alias={site_alias}, "
+            f"assignee={assignee}, additional_fields_present={additional_fields is not None}"
+        )
+        try:
+            # 1. Get the prepared update data
+            issue_data_for_client = jira_tools.update_jira_issue_implementation(
+                issue_key=issue_key,
+                summary=summary,
+                description=description,  # Pass Markdown here
+                issue_type=issue_type,
+                site_alias=site_alias,
+                assignee=assignee,
+                additional_fields=additional_fields
+            )
+            logger.debug(f"Update data prepared by implementation: {issue_data_for_client}")
+
+            # 2. Get active JIRA site configuration (same as create)
+            active_site_config_dict = get_active_jira_config(alias=site_alias, server_config=config)
+            logger.debug(f"Using JIRA site config for alias '{site_alias}'")
+
+            # 3. Instantiate JiraClient with the specific site config (same as create)
+            jira_client = JiraClient(site_config=active_site_config_dict)
+            logger.debug("JiraClient instantiated.")
+
+            # 4. Call the JiraClient to update the issue
+            updated_issue_response = jira_client.update_issue(
+                issue_key=issue_data_for_client.pop("issue_key"),  # Extract and remove
+                summary=issue_data_for_client.pop("summary", None),
+                description=issue_data_for_client.pop("description", None),
+                issue_type=issue_data_for_client.pop("issue_type", None),
+                assignee=assignee,
+                **issue_data_for_client  # Remaining items (e.g. from additional_fields)
+            )
+            logger.info(f"JIRA issue update response: {updated_issue_response}")
+
+            issue_key_result = updated_issue_response.get('key')
+            updated_fields = updated_issue_response.get('updated_fields', [])
+            browse_url = updated_issue_response.get('url', "N/A")
+
+            return types.TextContent(
+                type="text",
+                text=f"Successfully updated JIRA issue: {issue_key_result}. Updated fields: {', '.join(updated_fields)}. URL: {browse_url}",
+                format="text/plain"
+            )
+        except JiraServiceError as e:
+            logger.error(f"JiraServiceError in update_jira_issue_tool: {e}", exc_info=True)
+            return types.TextContent(
+                type="text",
+                text=f"Error updating JIRA issue: {e}",
+                format="text/plain"
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error in update_jira_issue_tool: {e}", exc_info=True)
+            return types.TextContent(
+                type="text",
+                text=f"An unexpected error occurred: {e}",
+                format="text/plain"
+            )
+
     # Add other JIRA tools here, using the 'config' object to get site details
 
 # --- Server Instantiation and CLI --- 

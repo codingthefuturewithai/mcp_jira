@@ -61,6 +61,7 @@ def create_jira_issue_implementation(
             "issue_type": issue_type,
             "assignee": assignee
         }
+        
         if additional_fields:
             issue_data.update(additional_fields) # Add any other fields passed in
         
@@ -74,6 +75,46 @@ def create_jira_issue_implementation(
         # Catch any other unexpected errors and wrap them in JiraServiceError
         # Log the original exception here if logging is set up
         raise JiraServiceError(f"An unexpected error occurred in create_jira_issue_implementation: {e}")
+
+def update_jira_issue_implementation(
+    issue_key: str,
+    summary: Optional[str] = None,
+    description: Optional[str] = None, 
+    issue_type: Optional[str] = None,
+    site_alias: Optional[str] = None,
+    assignee: Optional[str] = None,
+    additional_fields: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
+    """
+    Implementation for updating a JIRA issue.
+    Only builds update data for fields that are provided (not None).
+    """
+    try:
+        # Build update data - start with issue_key (always required)
+        issue_data = {"issue_key": issue_key}
+        
+        # Only add fields that are explicitly provided (not None)
+        if summary is not None:
+            issue_data["summary"] = summary
+        if description is not None:
+            issue_data["description"] = description  # Raw markdown, will be converted by JiraClient
+        if issue_type is not None:
+            issue_data["issue_type"] = issue_type
+        # Assignee is handled as a direct parameter in the service layer, not in this dictionary
+            
+        # Add additional fields (same pattern as create)
+        if additional_fields:
+            issue_data.update(additional_fields)
+        
+        # Return the prepared data for JiraClient.update_issue
+        return issue_data
+
+    except JiraServiceError as e:
+        # Re-raise JiraServiceError to be handled by the MCP framework
+        raise
+    except Exception as e:
+        # Catch any other unexpected errors and wrap them in JiraServiceError
+        raise JiraServiceError(f"An unexpected error occurred in update_jira_issue_implementation: {e}")
 
 # Future JIRA tool implementations (e.g., search, update) would go here.
 # def search_jira_issues_implementation(jira_client: JiraClient, jql_query: str) -> List[Dict[str,Any]]:
