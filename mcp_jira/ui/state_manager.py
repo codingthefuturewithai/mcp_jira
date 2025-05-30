@@ -84,4 +84,53 @@ def add_new_site_to_state():
     if 'sites_list' not in st.session_state.editable_config:
         st.session_state.editable_config['sites_list'] = []
     st.session_state.editable_config['sites_list'].append(new_site)
+    st.rerun()
+
+def delete_site_from_state(site_ui_id_to_delete: str):
+    """Deletes a site from the session state's sites_list based on its ui_id."""
+    if 'editable_config' not in st.session_state or \
+       'sites_list' not in st.session_state.editable_config or \
+       st.session_state.editable_config is None:
+        st.error("Cannot delete site: configuration or sites list not found in session state.")
+        return
+
+    sites_list = st.session_state.editable_config['sites_list']
+    original_length = len(sites_list)
+    alias_of_deleted_site = None
+
+    # Find and remove the site
+    for i, site in enumerate(sites_list):
+        if site['ui_id'] == site_ui_id_to_delete:
+            alias_of_deleted_site = site.get('alias')
+            sites_list.pop(i)
+            break
+    
+    if len(sites_list) == original_length:
+        st.warning(f"Site with UI ID '{site_ui_id_to_delete}' not found for deletion.")
+        # No rerun needed if nothing changed
+        return
+
+    # If the deleted site was the default, clear or update the default_site_alias
+    current_default_alias = st.session_state.editable_config.get('default_site_alias')
+    if alias_of_deleted_site and current_default_alias == alias_of_deleted_site:
+        if sites_list:
+            new_default_alias = sites_list[0].get('alias', '')
+            st.session_state.editable_config['default_site_alias'] = new_default_alias
+            st.session_state.action_feedback_message = {
+                "type": "warning", 
+                "text": f"Site '{alias_of_deleted_site}' deleted. Default site alias updated to '{new_default_alias}'. Please verify and save."
+            }
+        else:
+            st.session_state.editable_config['default_site_alias'] = ''
+            st.session_state.action_feedback_message = {
+                "type": "info", 
+                "text": f"Site '{alias_of_deleted_site}' deleted. No sites remaining. Default site alias cleared."
+            }
+    elif alias_of_deleted_site:
+        st.session_state.action_feedback_message = {
+            "type": "info", 
+            "text": f"Site '{alias_of_deleted_site}' removed. Click 'Save Configuration' to persist this change."
+        }
+    # Removed fallback 'else' for toast as it might be confusing if site_ui_id_to_delete was invalid (already handled by warning)
+    
     st.rerun() 

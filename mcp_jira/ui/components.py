@@ -1,6 +1,7 @@
 # Placeholder for UI component rendering functions 
 
 import streamlit as st
+from mcp_jira.ui import state_manager # Import state_manager to call delete function
 
 def mask_api_token(token: str) -> str:
     """
@@ -68,16 +69,27 @@ def render_single_site_form(site_dict: dict, is_default_site: bool, site_index: 
     expander_label = f"Site: {alias_for_display} {'(Default)' if is_default_site else ''}"
     
     with st.expander(expander_label, expanded=True):
-        site_dict['alias'] = st.text_input(
-            "Site Alias", 
-            value=site_dict.get('alias', ''), 
-            key=f"alias_{ui_id}",
-            help="Unique identifier for this JIRA site configuration (e.g., prod_jira, dev_env)."
-        )
-        site_dict['url'] = st.text_input("Site URL", value=site_dict.get('url', ''), key=f"url_{ui_id}")
-        site_dict['email'] = st.text_input("Email", value=site_dict.get('email', ''), key=f"email_{ui_id}")
-        site_dict['api_token'] = st.text_input("API Token", value=site_dict.get('api_token', ''), key=f"token_{ui_id}", type="password") 
-        site_dict['cloud'] = st.checkbox("JIRA Cloud", value=site_dict.get('cloud', True), key=f"cloud_{ui_id}")
+        # Use columns for layout: one for inputs, one for delete button
+        col1, col2 = st.columns([4, 1]) # Adjust ratio as needed
+        
+        with col1:
+            site_dict['alias'] = st.text_input(
+                "Site Alias", 
+                value=site_dict.get('alias', ''), 
+                key=f"alias_{ui_id}",
+                help="Unique identifier for this JIRA site configuration (e.g., prod_jira, dev_env)."
+            )
+            site_dict['url'] = st.text_input("Site URL", value=site_dict.get('url', ''), key=f"url_{ui_id}")
+            site_dict['email'] = st.text_input("Email", value=site_dict.get('email', ''), key=f"email_{ui_id}")
+            site_dict['api_token'] = st.text_input("API Token", value=site_dict.get('api_token', ''), key=f"token_{ui_id}", type="password") 
+            site_dict['cloud'] = st.checkbox("JIRA Cloud", value=site_dict.get('cloud', True), key=f"cloud_{ui_id}")
+
+        with col2: 
+            st.write("\n") # Add some spacing above the button
+            st.write("\n") 
+            if st.button("Delete Site", key=f"delete_{ui_id}", type="secondary", help=f"Remove the '{alias_for_display}' site configuration."):
+                state_manager.delete_site_from_state(ui_id)
+                # delete_site_from_state handles the rerun, so no explicit st.rerun() here.
 
 def render_jira_sites_editor(editable_config: dict):
     """Renders the editor for all JIRA sites."""

@@ -12,10 +12,26 @@ def main():
         layout="wide",
     )
 
-    # Check for and display save success toast at the beginning of a rerun
+    # Display INFO/WARNING messages (e.g., from site deletion) at the top
+    if 'action_feedback_message' in st.session_state and \
+       st.session_state.action_feedback_message and \
+       st.session_state.action_feedback_message.get("type") != "success":
+        feedback = st.session_state.action_feedback_message
+        message_type = feedback.get("type", "info") # Default to info if type somehow missing
+        text = feedback.get("text", "Action completed.")
+        if message_type == "warning":
+            st.warning(text)
+        # elif message_type == "error": # Errors from save_config_io are displayed directly by it
+        #     st.error(text) # Unlikely to be set here for error type by other functions
+        else: # Default to info for other non-success types
+            st.info(text)
+        del st.session_state.action_feedback_message # Clear after displaying
+
+    # Remove old toast flags if they somehow persist (defensive cleanup)
     if st.session_state.get('show_save_success_toast'):
-        st.toast(st.session_state.show_save_success_toast, icon="✅")
-        del st.session_state.show_save_success_toast # Clear the flag
+        del st.session_state.show_save_success_toast
+    if st.session_state.get('show_delete_toast'):
+        del st.session_state.show_delete_toast
 
     st.title("MCP JIRA Server Configuration Editor")
 
@@ -50,22 +66,28 @@ def main():
     components.render_jira_sites_editor(editable_config)
 
     # --- Action Buttons ---
-    col1, col2 = st.columns([1,6]) # Give more space to save button or align better
-    with col1:
+    col_add_button, _ = st.columns([1,6]) # Column for add button, adjust ratio if needed
+    with col_add_button:
         if st.button("Add New JIRA Site"):
             state_manager.add_new_site_to_state() # This function now handles the rerun
             # No explicit rerun here as add_new_site_to_state should call it
     
+    st.markdown("---") # Separator before save area
+
+    # Display SUCCESS messages (typically from saving) directly above the Save button
+    if 'action_feedback_message' in st.session_state and \
+       st.session_state.action_feedback_message and \
+       st.session_state.action_feedback_message.get("type") == "success":
+        st.success(st.session_state.action_feedback_message.get("text"))
+        del st.session_state.action_feedback_message # Clear after displaying
+
     # Save button in the main app, separated for clarity
     if st.button("Save Configuration", type="primary"):
         if config_io.save_configuration_to_file(editable_config, loaded_path):
-            # Set flag for toast on next rerun
-            st.session_state.show_save_success_toast = f"Configuration saved successfully to {loaded_path}"
-            state_manager.reset_and_reload_state() # Reloads state from the saved file
-            st.rerun()
-        else:
-            # Errors during save are displayed by save_configuration_to_file using st.error
-            pass # No further action needed here as error is already shown
+            # Success message is now set by save_configuration_to_file in session_state
+            state_manager.reset_and_reload_state() # This re-runs initialize_session_state
+            st.rerun() # Rerun to display the success message and refreshed state
+        # else: error messages are handled by save_configuration_to_file directly using st.error
 
 if __name__ == "__main__":
     # Note: For the Streamlit UI to correctly find the mcp_jira package (and thus mcp_jira.config),

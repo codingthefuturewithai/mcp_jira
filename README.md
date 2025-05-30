@@ -99,77 +99,38 @@ sites:
 6. Copy the generated token immediately. **You will not be able to see it again.**
 7. Add the copied token to your `config.yaml` file.
 
-## Available Tools
+## Configuration Editor UI
 
-### create_jira_issue
+This project includes a web-based configuration editor built with Streamlit to easily manage your `config.yaml` file.
 
-Creates a new JIRA issue with markdown description converted to ADF format.
+### Features
+- View and edit all general settings (Server Name, Log Level, Default Site Alias).
+- View, edit, add, and delete JIRA site configurations (Alias, URL, Email, API Token, Cloud status).
+- Changes are saved directly to the `config.yaml` file used by the MCP server.
+- The editor automatically uses the same configuration file path logic as the server itself (CLI override, environment variable, or OS-specific default).
 
-**Parameters:**
-- `project` (string, required): JIRA project key (e.g., "ACT", "DEV")
-- `summary` (string, required): Issue summary/title
-- `description` (string, required): Issue description in markdown format
-- `issue_type` (string, optional): Issue type (default: "Task")
-- `site_alias` (string, optional): Which JIRA site to use (default: configured default)
-- `assignee` (string, optional): Assignee email address
-- `additional_fields` (object, optional): Additional JIRA fields as key-value pairs
+### Running the Editor
+1.  Ensure all project dependencies, including Streamlit, are installed:
+    ```bash
+    uv pip install -e .
+    ```
+2.  From the root of the project directory, run:
+    ```bash
+    streamlit run mcp_jira/ui/app.py
+    ```
+    Or, if `mcp_jira` is installed in your environment and your `PYTHONPATH` is set up:
+    ```bash
+    PYTHONPATH=. streamlit run mcp_jira/ui/app.py
+    ```
+3.  Open the URL provided by Streamlit in your web browser.
 
-**Example Usage:**
-```json
-{
-  "project": "ACT",
-  "summary": "Implement user authentication feature",
-  "description": "# Authentication Feature\n\nImplement OAuth2 authentication:\n\n- [ ] Set up OAuth provider\n- [ ] Create login/logout endpoints\n- [ ] Add session management\n\n```python\ndef authenticate_user(token):\n    # Validates the provided token\n    return validate_token(token)\n```",
-  "assignee": "developer@example.com",
-  "additional_fields": {
-    "labels": ["security", "authentication"],
-    "priority": {"name": "High"},
-    "duedate": "2024-03-01"
-  }
-}
-```
+### Screenshot
 
-**Returns:**
-```
-Successfully created JIRA issue: ACT-123 (ID: 10001). URL: https://your-domain.atlassian.net/browse/ACT-123
-```
-
-### update_jira_issue
-
-Updates an existing JIRA issue. Only provided fields will be updated.
-
-**Parameters:**
-- `issue_key` (string, required): The key of the JIRA issue to update (e.g., "ACT-123").
-- `summary` (string, optional): New issue summary/title.
-- `description` (string, optional): New issue description in markdown format. Converts to ADF.
-- `assignee` (string, optional): New assignee's email address. To unassign, provide an empty string `""` or `null` (behavior then depends on JIRA project's default assignee settings).
-- `additional_fields` (object, optional): Additional JIRA fields to update, as key-value pairs (e.g., labels, priority, due date).
-- `issue_type` (string, optional): New issue type (e.g., "Bug", "Story"). Note: Changing issue types can be restricted by JIRA workflow configurations.
-- `site_alias` (string, optional): Which JIRA site to use (defaults to the `default_site_alias` in `config.yaml`).
-
-**Example Usage:**
-```json
-{
-  "issue_key": "ACT-123",
-  "summary": "Implement user authentication feature (updated)",
-  "description": "# Authentication Feature (Revised)\n\nOAuth2 implementation details:\n\n- [x] Set up OAuth provider\n- [ ] Create login/logout endpoints (in progress)\n- [ ] Add session management\n\n```python\ndef authenticate_user(token):\n    # Validates the provided token securely\n    return secure_validate_token(token)\n```",
-  "assignee": "another.developer@example.com",
-  "additional_fields": {
-    "labels": ["security", "authentication", "oauth2"],
-    "priority": {"name": "Highest"},
-    "duedate": "2024-03-15"
-  }
-}
-```
-
-**Returns:**
-```
-Successfully updated JIRA issue: ACT-123. URL: https://your-domain.atlassian.net/browse/ACT-123
-```
+![MCP JIRA Server Configuration Editor](docs/images/mcp-server-config-editor.png)
 
 ## Usage
 
-### Run the MCP Server
+### Running the MCP Server
 
 ```bash
 # Run with stdio transport (default)
@@ -182,54 +143,17 @@ mcp_jira-server --transport sse --port 3001
 mcp_jira-server --config /path/to/config.yaml
 ```
 
-### Example: Creating a JIRA Issue
+### Available Tools
 
-```python
-# Example markdown description with rich formatting
-description = """
-# Bug Report: Login Page Issue
+This server exposes the following tools for interacting with JIRA:
 
-## Problem Description
-Users are experiencing login failures when using special characters in passwords.
+#### create_jira_issue
 
-## Steps to Reproduce
-1. Navigate to login page
-2. Enter username with special characters: `user+test@example.com`
-3. Enter password with symbols: `P@ssw0rd!`
-4. Click "Login" button
+Creates a new JIRA issue. You can specify the project, summary, a detailed description in markdown (which will be converted to JIRA's rich text format), issue type, assignee, and other custom fields.
 
-## Expected vs Actual
-- **Expected**: User should be logged in successfully
-- **Actual**: Error message "Invalid credentials"
+#### update_jira_issue
 
-## Code Investigation
-Found issue in validation function:
-
-```python
-def validate_password(password):
-    # This regex is too restrictive
-    pattern = r'^[a-zA-Z0-9]+$'  # Missing special chars!
-    return re.match(pattern, password)
-```
-
-## Fix Required
-Update regex pattern to allow special characters in password validation.
-"""
-
-# Create the issue
-create_jira_issue(
-    project="BUG",
-    summary="Login fails with special characters in password",
-    description=description,
-    issue_type="Bug",
-    assignee="security-team@example.com",
-    additional_fields={
-        "labels": ["security", "login", "urgent"],
-        "priority": {"name": "High"},
-        "components": [{"name": "Authentication"}]
-    }
-)
-```
+Updates an existing JIRA issue. You can modify fields such as the summary, description (markdown supported), assignee, issue type, or other custom fields. Only the fields you provide will be changed.
 
 ## Logging
 
@@ -247,6 +171,7 @@ Log files are stored in OS-specific locations by default:
 Logging behavior (level, file path, rotation settings) is configured via the `config.yaml` file. See the example `config.yaml` in the "Configuration" section for details on `log_level`, `log_file_path`, `log_max_bytes`, and `log_backup_count`.
 
 The log level can also be overridden using the `MCP_JIRA_LOG_LEVEL` environment variable. If set, this environment variable takes precedence over the `log_level` in `config.yaml`.
+
 ```bash
 # Example: Set log level to DEBUG for detailed API communication
 MCP_JIRA_LOG_LEVEL=DEBUG mcp_jira-server

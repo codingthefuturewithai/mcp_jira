@@ -61,6 +61,11 @@ def save_configuration_to_file(config_dict_to_save: dict, file_path: str) -> boo
     try:
         with open(file_path, 'w') as f:
             yaml.dump(transformed_config, f, sort_keys=False, indent=2, default_flow_style=False)
+        # Set action_feedback_message for success, to be displayed by app.py
+        st.session_state.action_feedback_message = {
+            "type": "success", 
+            "text": f"Configuration saved successfully to '{file_path}'"
+        }
         return True
     except Exception as e:
         st.error(f"Failed to save configuration to '{file_path}': {str(e)}")
