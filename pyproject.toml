@@ -21,7 +21,8 @@ dependencies = [
     "PyYAML>=6.0.1",
     "platformdirs>=4.2.2",
     "markdown-it-py>=3.0.0",
-    "mdurl>=0.1.2"
+    "mdurl>=0.1.2",
+    "streamlit"
 ]
 
 [project.scripts]
