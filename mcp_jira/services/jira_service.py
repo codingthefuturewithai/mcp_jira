@@ -6,7 +6,7 @@ and any JIRA-specific helper functions like markdown conversion.
 
 import json
 import requests
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from mcp_jira.converters.markdown_to_adf import MarkdownToADFConverter
 from mcp_jira.config import JiraSiteConfig
 from mcp_jira.logging_config import logger
@@ -211,6 +211,64 @@ class JiraClient:
             raise JiraServiceError(f"Network error updating issue: {str(e)}")
         except Exception as e:
             raise JiraServiceError(f"Error updating issue: {str(e)}")
+
+    def search(self, jql_query: str, max_results: int = 50) -> List[Dict[str, Any]]:
+        """
+        Search for JIRA issues using JQL (Jira Query Language).
+        
+        Args:
+            jql_query: JQL query string (e.g., "project = ABC AND status = 'In Progress'")
+            max_results: Maximum number of results to return (default: 50)
+            
+        Returns:
+            List of issue dictionaries containing search results
+            
+        Raises:
+            JiraServiceError: If search fails
+        """
+        try:
+            # Build search parameters
+            params = {
+                "jql": jql_query,
+                "maxResults": max_results,
+                "fields": "key,summary,status,assignee,priority,created,updated,description"
+            }
+            
+            # Make API request
+            url = f"{self.base_url}/rest/api/3/search"
+            response = self.session.get(url, params=params)
+            
+            if response.status_code == 200:
+                result = response.json()
+                issues = result.get("issues", [])
+                
+                # Format issues for easier consumption
+                formatted_issues = []
+                for issue in issues:
+                    fields = issue.get("fields", {})
+                    formatted_issue = {
+                        "key": issue.get("key"),
+                        "id": issue.get("id"),
+                        "summary": fields.get("summary"),
+                        "status": fields.get("status", {}).get("name"),
+                        "assignee": fields.get("assignee", {}).get("displayName") if fields.get("assignee") else None,
+                        "priority": fields.get("priority", {}).get("name") if fields.get("priority") else None,
+                        "created": fields.get("created"),
+                        "updated": fields.get("updated"),
+                        "url": f"{self.base_url}/browse/{issue.get('key')}"
+                    }
+                    formatted_issues.append(formatted_issue)
+                
+                logger.debug(f"SEARCH: Found {len(formatted_issues)} issues for query: {jql_query}")
+                return formatted_issues
+            else:
+                error_msg = f"Failed to search issues: {response.status_code} - {response.text}"
+                raise JiraServiceError(error_msg)
+                
+        except requests.exceptions.RequestException as e:
+            raise JiraServiceError(f"Network error searching issues: {str(e)}")
+        except Exception as e:
+            raise JiraServiceError(f"Error searching issues: {str(e)}")
 
     def _get_user_account_id(self, email_or_username: str) -> Optional[str]:
         logger.debug(f"_GET_USER_ACCOUNT_ID: Received email_or_username: '{email_or_username}'")

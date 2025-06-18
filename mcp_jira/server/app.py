@@ -224,6 +224,84 @@ Wrapper that calls jira_tools.create_jira_issue_implementation and then JiraClie
                 format="text/plain"
             )
 
+    @mcp_server.tool(
+        name="search_jira_issues",
+        description="Search for Jira issues using JQL (Jira Query Language) syntax",
+    )
+    def search_jira_issues_tool(
+        query: str,
+        site_alias: str = None
+    ) -> types.TextContent:
+        """
+        Search for JIRA issues using JQL syntax.
+        
+        Args:
+            query: JQL query string (e.g., "project = ABC AND status = 'In Progress'")
+            site_alias: Optional site alias for multi-site configurations
+        """
+        logger.debug(
+            f"search_jira_issues_tool received: query='{query}', site_alias={site_alias}"
+        )
+        try:
+            # 1. Get the prepared search data (using default max_results)
+            search_data = jira_tools.search_jira_issues_implementation(
+                query=query,
+                site_alias=site_alias,
+                max_results=50  # Default value similar to conduit
+            )
+            logger.debug(f"Search data prepared by implementation: {search_data}")
+
+            # 2. Get active JIRA site configuration
+            active_site_config_dict = get_active_jira_config(alias=site_alias, server_config=config)
+            logger.debug(f"Using JIRA site config for alias '{site_alias}'")
+
+            # 3. Instantiate JiraClient with the specific site config
+            jira_client = JiraClient(site_config=active_site_config_dict)
+            logger.debug("JiraClient instantiated.")
+
+            # 4. Call the JiraClient to search for issues
+            search_results = jira_client.search(
+                jql_query=search_data["jql_query"],
+                max_results=search_data["max_results"]
+            )
+            logger.info(f"JIRA search found {len(search_results)} issues")
+
+            # 5. Format results - match conduit's simple string format but with better structure
+            if not search_results:
+                response_text = f"No issues found for query: {query}"
+            else:
+                # Format similar to conduit but more readable
+                formatted_results = []
+                for issue in search_results:
+                    issue_str = f"{issue['key']}: {issue['summary']}"
+                    if issue['status']:
+                        issue_str += f" [Status: {issue['status']}]"
+                    if issue['assignee']:
+                        issue_str += f" [Assignee: {issue['assignee']}]"
+                    formatted_results.append(issue_str)
+                
+                response_text = f"Found {len(search_results)} issues:\n" + "\n".join(formatted_results)
+
+            return types.TextContent(
+                type="text",
+                text=response_text,
+                format="text/plain"
+            )
+        except JiraServiceError as e:
+            logger.error(f"JiraServiceError in search_jira_issues_tool: {e}", exc_info=True)
+            return types.TextContent(
+                type="text",
+                text=f"Error searching JIRA issues: {e}",
+                format="text/plain"
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error in search_jira_issues_tool: {e}", exc_info=True)
+            return types.TextContent(
+                type="text",
+                text=f"An unexpected error occurred: {e}",
+                format="text/plain"
+            )
+
     # Add other JIRA tools here, using the 'config' object to get site details
 
 # --- Server Instantiation and CLI --- 

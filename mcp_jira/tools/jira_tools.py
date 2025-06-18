@@ -116,6 +116,31 @@ def update_jira_issue_implementation(
         # Catch any other unexpected errors and wrap them in JiraServiceError
         raise JiraServiceError(f"An unexpected error occurred in update_jira_issue_implementation: {e}")
 
+def search_jira_issues_implementation(
+    query: str,
+    site_alias: Optional[str] = None,
+    max_results: int = 50
+) -> Dict[str, Any]:
+    """
+    Implementation for searching JIRA issues using JQL.
+    Returns the query and parameters for the JiraClient.search call.
+    """
+    try:
+        # Prepare search parameters for the client
+        search_data = {
+            "jql_query": query,
+            "max_results": max_results
+        }
+        
+        return search_data
+
+    except JiraServiceError as e:
+        # Re-raise JiraServiceError to be handled by the MCP framework
+        raise
+    except Exception as e:
+        # Catch any other unexpected errors and wrap them in JiraServiceError
+        raise JiraServiceError(f"An unexpected error occurred in search_jira_issues_implementation: {e}")
+
 # Future JIRA tool implementations (e.g., search, update) would go here.
 # def search_jira_issues_implementation(jira_client: JiraClient, jql_query: str) -> List[Dict[str,Any]]:
 #     # ...
