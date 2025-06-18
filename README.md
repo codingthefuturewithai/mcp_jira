@@ -155,6 +155,15 @@ Creates a new JIRA issue. You can specify the project, summary, a detailed descr
 
 Updates an existing JIRA issue. You can modify fields such as the summary, description (markdown supported), assignee, issue type, or other custom fields. Only the fields you provide will be changed.
 
+#### search_jira_issues
+
+Search for JIRA issues using JQL (JIRA Query Language) syntax. Specify a JQL query to find issues matching your criteria. Returns a list of matching issues with key, summary, status, and assignee information.
+
+Example queries:
+- `project = MYPROJECT`
+- `project = MYPROJECT AND status = 'In Progress'`
+- `assignee = currentUser() AND created >= -7d`
+
 ## Logging
 
 The server logs activity to both stderr and a rotating log file.
