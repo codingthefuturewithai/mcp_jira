@@ -231,7 +231,7 @@ class JiraClient:
             params = {
                 "jql": jql_query,
                 "maxResults": max_results,
-                "fields": "key,summary,status,assignee,priority,created,updated,description"
+                "fields": "key,summary,status,assignee,priority,created,updated,description,issuetype,project"
             }
             
             # Make API request
@@ -246,13 +246,26 @@ class JiraClient:
                 formatted_issues = []
                 for issue in issues:
                     fields = issue.get("fields", {})
+                    
+                    # Extract and convert ADF description back to markdown for consistency
+                    description = None
+                    adf_description = fields.get("description")
+                    if adf_description:
+                        # For now, extract text content from ADF structure
+                        # This is a simplified extraction - could be enhanced later
+                        description = self._extract_text_from_adf(adf_description)
+                    
                     formatted_issue = {
                         "key": issue.get("key"),
                         "id": issue.get("id"),
                         "summary": fields.get("summary"),
+                        "description": description,
                         "status": fields.get("status", {}).get("name"),
                         "assignee": fields.get("assignee", {}).get("displayName") if fields.get("assignee") else None,
+                        "assignee_email": fields.get("assignee", {}).get("emailAddress") if fields.get("assignee") else None,
                         "priority": fields.get("priority", {}).get("name") if fields.get("priority") else None,
+                        "issue_type": fields.get("issuetype", {}).get("name") if fields.get("issuetype") else None,
+                        "project": fields.get("project", {}).get("key") if fields.get("project") else None,
                         "created": fields.get("created"),
                         "updated": fields.get("updated"),
                         "url": f"{self.base_url}/browse/{issue.get('key')}"
@@ -269,6 +282,33 @@ class JiraClient:
             raise JiraServiceError(f"Network error searching issues: {str(e)}")
         except Exception as e:
             raise JiraServiceError(f"Error searching issues: {str(e)}")
+
+    def _extract_text_from_adf(self, adf_content: Dict[str, Any]) -> str:
+        """
+        Extract plain text content from ADF structure for display purposes.
+        This is a simplified extraction that gets the basic text content.
+        """
+        if not adf_content or not isinstance(adf_content, dict):
+            return ""
+        
+        def extract_text_recursive(node):
+            if not isinstance(node, dict):
+                return ""
+            
+            text_parts = []
+            
+            # If this node has text directly
+            if "text" in node:
+                text_parts.append(node["text"])
+            
+            # If this node has content (nested nodes)
+            if "content" in node and isinstance(node["content"], list):
+                for child in node["content"]:
+                    text_parts.append(extract_text_recursive(child))
+            
+            return " ".join(filter(None, text_parts))
+        
+        return extract_text_recursive(adf_content).strip()
 
     def _get_user_account_id(self, email_or_username: str) -> Optional[str]:
         logger.debug(f"_GET_USER_ACCOUNT_ID: Received email_or_username: '{email_or_username}'")

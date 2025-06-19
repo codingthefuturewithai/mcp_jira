@@ -78,53 +78,30 @@ def hello():
     print("Hello, world!")
 ```
 
-Wrapper that calls jira_tools.create_jira_issue_implementation and then JiraClient.create_issue.
+Create a JIRA issue with markdown description converted to ADF.
 """
         logger.debug(
             f"create_jira_issue_tool received: project={project}, summary={summary}, "
             f"issue_type={issue_type}, site_alias={site_alias}, assignee={assignee}, additional_fields_present={additional_fields is not None}"
         )
         try:
-            # 1. Get the prepared issue data (description converted to JIRA wiki)
-            #    The site_alias is passed to the implementation if it needs to make early decisions
-            #    based on site, but currently it's not used there.
-            issue_data_for_client = jira_tools.create_jira_issue_implementation(
+            # Call the business logic function directly
+            result = jira_tools.create_jira_issue(
                 project=project,
                 summary=summary,
-                description=description, # Pass Markdown here
+                description=description,
                 issue_type=issue_type,
-                site_alias=site_alias, # Pass along for consistency, though not used in current impl
+                site_alias=site_alias,
                 assignee=assignee,
-                additional_fields=additional_fields
+                additional_fields=additional_fields,
+                server_config=config
             )
-            logger.debug(f"Data prepared by implementation: {issue_data_for_client}")
-
-            # 2. Get active JIRA site configuration
-            active_site_config_dict = get_active_jira_config(alias=site_alias, server_config=config)
-            logger.debug(f"Using JIRA site config for alias '{site_alias}'")
-
-            # 3. Instantiate JiraClient with the specific site config
-            jira_client = JiraClient(site_config=active_site_config_dict)
-            logger.debug("JiraClient instantiated.")
-
-            # 4. Call the JiraClient to create the issue
-            # The issue_data_for_client dictionary's keys should directly match
-            # the arguments of jira_client.create_issue (project_key, summary, description, issue_type)
-            # and any additional items for **kwargs.
-            created_issue_response = jira_client.create_issue(
-                project_key=issue_data_for_client.pop("project_key"), # Extract and remove to avoid duplicate in kwargs
-                summary=issue_data_for_client.pop("summary"),
-                description=issue_data_for_client.pop("description"),
-                issue_type=issue_data_for_client.pop("issue_type"),
-                assignee=issue_data_for_client.pop("assignee"),
-                **issue_data_for_client # Remaining items (e.g. from additional_fields) go into kwargs
-            )
-            logger.info(f"JIRA issue creation response: {created_issue_response}")
-
-            issue_key = created_issue_response.get('key')
-            issue_id = created_issue_response.get('id')
-            # Construct browseable URL (common pattern)
-            browse_url = f"{active_site_config_dict.url}/browse/{issue_key}" if issue_key else "N/A"
+            
+            logger.info(f"JIRA issue creation result: {result}")
+            
+            issue_key = result.get('key')
+            issue_id = result.get('id')
+            browse_url = result.get('url', "N/A")
 
             return types.TextContent(
                 type="text",
@@ -169,40 +146,23 @@ Wrapper that calls jira_tools.create_jira_issue_implementation and then JiraClie
             f"assignee={assignee}, additional_fields_present={additional_fields is not None}"
         )
         try:
-            # 1. Get the prepared update data
-            issue_data_for_client = jira_tools.update_jira_issue_implementation(
+            # Call the business logic function directly
+            result = jira_tools.update_jira_issue(
                 issue_key=issue_key,
                 summary=summary,
-                description=description,  # Pass Markdown here
+                description=description,
                 issue_type=issue_type,
                 site_alias=site_alias,
                 assignee=assignee,
-                additional_fields=additional_fields
+                additional_fields=additional_fields,
+                server_config=config
             )
-            logger.debug(f"Update data prepared by implementation: {issue_data_for_client}")
+            
+            logger.info(f"JIRA issue update result: {result}")
 
-            # 2. Get active JIRA site configuration (same as create)
-            active_site_config_dict = get_active_jira_config(alias=site_alias, server_config=config)
-            logger.debug(f"Using JIRA site config for alias '{site_alias}'")
-
-            # 3. Instantiate JiraClient with the specific site config (same as create)
-            jira_client = JiraClient(site_config=active_site_config_dict)
-            logger.debug("JiraClient instantiated.")
-
-            # 4. Call the JiraClient to update the issue
-            updated_issue_response = jira_client.update_issue(
-                issue_key=issue_data_for_client.pop("issue_key"),  # Extract and remove
-                summary=issue_data_for_client.pop("summary", None),
-                description=issue_data_for_client.pop("description", None),
-                issue_type=issue_data_for_client.pop("issue_type", None),
-                assignee=assignee,
-                **issue_data_for_client  # Remaining items (e.g. from additional_fields)
-            )
-            logger.info(f"JIRA issue update response: {updated_issue_response}")
-
-            issue_key_result = updated_issue_response.get('key')
-            updated_fields = updated_issue_response.get('updated_fields', [])
-            browse_url = updated_issue_response.get('url', "N/A")
+            issue_key_result = result.get('key')
+            updated_fields = result.get('updated_fields', [])
+            browse_url = result.get('url', "N/A")
 
             return types.TextContent(
                 type="text",
@@ -266,21 +226,33 @@ Wrapper that calls jira_tools.create_jira_issue_implementation and then JiraClie
             )
             logger.info(f"JIRA search found {len(search_results)} issues")
 
-            # 5. Format results - match conduit's simple string format but with better structure
+            # Format results - include all the rich information like create/update tools
             if not search_results:
                 response_text = f"No issues found for query: {query}"
             else:
-                # Format similar to conduit but more readable
+                # Format with rich information similar to what create/update tools handle
                 formatted_results = []
                 for issue in search_results:
-                    issue_str = f"{issue['key']}: {issue['summary']}"
-                    if issue['status']:
-                        issue_str += f" [Status: {issue['status']}]"
-                    if issue['assignee']:
-                        issue_str += f" [Assignee: {issue['assignee']}]"
-                    formatted_results.append(issue_str)
+                    # Build detailed issue information
+                    issue_lines = [
+                        f"**{issue['key']}**: {issue['summary']}",
+                        f"  - **Project**: {issue['project'] or 'N/A'}",
+                        f"  - **Type**: {issue['issue_type'] or 'N/A'}",
+                        f"  - **Status**: {issue['status'] or 'N/A'}",
+                        f"  - **Priority**: {issue['priority'] or 'N/A'}",
+                        f"  - **Assignee**: {issue['assignee'] or 'Unassigned'}",
+                        f"  - **Created**: {issue['created'] or 'N/A'}",
+                        f"  - **Updated**: {issue['updated'] or 'N/A'}",
+                        f"  - **URL**: {issue['url']}"
+                    ]
+                    
+                    # Include description if available
+                    if issue.get('description'):
+                        issue_lines.append(f"  - **Description**: {issue['description']}")
+                    
+                    formatted_results.append("\n".join(issue_lines))
                 
-                response_text = f"Found {len(search_results)} issues:\n" + "\n".join(formatted_results)
+                response_text = f"Found {len(search_results)} issues:\n\n" + "\n\n".join(formatted_results)
 
             return types.TextContent(
                 type="text",
