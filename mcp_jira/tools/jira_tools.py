@@ -1,122 +1,150 @@
 """
-Implementation logic for JIRA MCP tools.
-Functions here are called by the tool wrappers in server/app.py.
+Business logic for JIRA MCP tools.
+These functions contain the actual implementation logic called by the MCP server endpoints.
 """
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from mcp_jira.services.jira_service import JiraClient, JiraServiceError
+from mcp_jira.config import get_active_jira_config, ServerConfig
 
-def create_jira_issue_implementation(
+
+def create_jira_issue(
     project: str, 
     summary: str, 
     description: str, 
     issue_type: str = "Task", 
     site_alias: Optional[str] = None,
     assignee: Optional[str] = None,
-    additional_fields: Optional[Dict[str, Any]] = None # For any other fields
+    additional_fields: Optional[Dict[str, Any]] = None,
+    server_config: Optional[ServerConfig] = None
 ) -> Dict[str, Any]:
     """
-    Implementation for creating a JIRA issue. 
-    The description is taken as raw Markdown and passed through.
+    Create a JIRA issue with markdown description converted to ADF.
+    
+    Args:
+        project: Project key (e.g., 'ABC')
+        summary: Issue summary/title
+        description: Issue description in markdown format
+        issue_type: Type of issue (default: "Task")
+        site_alias: Optional site alias for multi-site configurations
+        assignee: Optional assignee email address
+        additional_fields: Optional dict of additional JIRA fields
+        server_config: Server configuration object
+        
+    Returns:
+        Dict containing created issue information (id, key, url)
+        
+    Raises:
+        JiraServiceError: If issue creation fails
     """
     try:
-        # Initialize JiraClient (which now takes site_config from get_active_jira_config)
-        # This part relies on get_active_jira_config being available and working correctly.
-        # For simplicity in this function, we assume config resolution happens upstream (e.g., in the MCP tool wrapper in app.py)
-        # or that JiraClient is instantiated with a pre-resolved site_config.
-        # However, the MCP tool definition itself receives the site_alias.
-        # The actual JiraClient instantiation will be handled by the MCP server layer using this site_alias.
-
-        # The input description is raw Markdown and should be passed as such.
-        # The JiraClient will handle conversion to ADF.
-        # jira_wiki_description = convert_markdown_to_jira_wiki(description) # REMOVE THIS LINE
-
-        # The JiraClient will be instantiated by the server framework using site_alias to get the config.
-        # Here, we'd normally receive the client as an argument or it would be part of a class.
-        # For this standalone function, we'll assume it's called by a part of the system 
-        # that has access to the correctly configured JiraClient instance.
+        # Get active JIRA site configuration
+        active_site_config = get_active_jira_config(alias=site_alias, server_config=server_config)
         
-        # This function is the *implementation* called by the tool wrapper.
-        # The tool wrapper in app.py will handle client instantiation.
-        # So, this implementation function should expect a JiraClient instance.
+        # Create JiraClient instance
+        jira_client = JiraClient(site_config=active_site_config)
         
-        # Let's adjust the thought process: the client is created in app.py's tool method.
-        # This implementation function should *receive* the client.
-        # For now, I will proceed assuming this function will eventually be called by app.py
-        # which will pass the description to the client's create_issue method.
-        # The key change is that description passed to client.create_issue should be JIRA wiki markup.
-
-        # **This function's role is primarily to prepare the arguments for the client.**
-        # The actual client call happens in the MCP tool wrapper if we follow that pattern.
-        # Or, if this is the final point before calling the client directly (and client is passed in):
+        # Create the issue
+        result = jira_client.create_issue(
+            project_key=project,
+            summary=summary,
+            description=description,  # Will be converted to ADF by JiraClient
+            issue_type=issue_type,
+            assignee=assignee,
+            **(additional_fields or {})
+        )
         
-        # client.create_issue(project_key=project, summary=summary, description=jira_wiki_description, issue_type=issue_type, **(additional_fields or {}))
-        # Since we are returning a dictionary that will be used by client.create_issue
-        # this function should return all necessary fields for the client call.
+        return result
         
-        issue_data = {
-            "project_key": project,
-            "summary": summary,
-            "description": description, # Pass the raw Markdown description
-            "issue_type": issue_type,
-            "assignee": assignee
-        }
-        
-        if additional_fields:
-            issue_data.update(additional_fields) # Add any other fields passed in
-        
-        # The actual JiraClient().create_issue call will be made in server/app.py using these returned details.
-        return issue_data # Return the prepared data for client.create_issue
-
-    except JiraServiceError as e:
-        # Re-raise JiraServiceError to be handled by the MCP framework
+    except JiraServiceError:
+        # Re-raise JiraServiceError as-is
         raise
     except Exception as e:
-        # Catch any other unexpected errors and wrap them in JiraServiceError
-        # Log the original exception here if logging is set up
-        raise JiraServiceError(f"An unexpected error occurred in create_jira_issue_implementation: {e}")
+        # Wrap unexpected errors
+        raise JiraServiceError(f"Unexpected error creating JIRA issue: {e}")
 
-def update_jira_issue_implementation(
+
+def update_jira_issue(
     issue_key: str,
     summary: Optional[str] = None,
     description: Optional[str] = None, 
     issue_type: Optional[str] = None,
     site_alias: Optional[str] = None,
     assignee: Optional[str] = None,
-    additional_fields: Optional[Dict[str, Any]] = None
+    additional_fields: Optional[Dict[str, Any]] = None,
+    server_config: Optional[ServerConfig] = None
 ) -> Dict[str, Any]:
     """
-    Implementation for updating a JIRA issue.
-    Only builds update data for fields that are provided (not None).
+    Update an existing JIRA issue. Only provided fields will be updated.
+    
+    Args:
+        issue_key: The issue key to update (e.g., 'ABC-123')
+        summary: Optional new summary
+        description: Optional new description in markdown format
+        issue_type: Optional new issue type
+        site_alias: Optional site alias for multi-site configurations
+        assignee: Optional new assignee email address
+        additional_fields: Optional dict of additional JIRA fields to update
+        server_config: Server configuration object
+        
+    Returns:
+        Dict containing updated issue information (key, updated_fields, url)
+        
+    Raises:
+        JiraServiceError: If issue update fails
     """
     try:
-        # Build update data - start with issue_key (always required)
-        issue_data = {"issue_key": issue_key}
+        # Get active JIRA site configuration
+        active_site_config = get_active_jira_config(alias=site_alias, server_config=server_config)
         
-        # Only add fields that are explicitly provided (not None)
-        if summary is not None:
-            issue_data["summary"] = summary
-        if description is not None:
-            issue_data["description"] = description  # Raw markdown, will be converted by JiraClient
-        if issue_type is not None:
-            issue_data["issue_type"] = issue_type
-        # Assignee is handled as a direct parameter in the service layer, not in this dictionary
-            
-        # Add additional fields (same pattern as create)
-        if additional_fields:
-            issue_data.update(additional_fields)
+        # Create JiraClient instance
+        jira_client = JiraClient(site_config=active_site_config)
         
-        # Return the prepared data for JiraClient.update_issue
-        return issue_data
+        # Update the issue
+        result = jira_client.update_issue(
+            issue_key=issue_key,
+            summary=summary,
+            description=description,  # Will be converted to ADF by JiraClient if provided
+            issue_type=issue_type,
+            assignee=assignee,
+            **(additional_fields or {})
+        )
+        
+        return result
+        
+    except JiraServiceError:
+        # Re-raise JiraServiceError as-is
+        raise
+    except Exception as e:
+        # Wrap unexpected errors
+        raise JiraServiceError(f"Unexpected error updating JIRA issue: {e}")
+
+
+def search_jira_issues_implementation(
+    query: str,
+    site_alias: Optional[str] = None,
+    max_results: int = 50
+) -> Dict[str, Any]:
+    """
+    Implementation for searching JIRA issues using JQL.
+    Returns the query and parameters for the JiraClient.search call.
+    The site_alias is used by the calling layer for configuration resolution.
+    """
+    try:
+        # Prepare search parameters for the client
+        search_data = {
+            "jql_query": query,
+            "max_results": max_results
+        }
+        
+        # Note: site_alias is used by the MCP server layer for configuration resolution
+        # and doesn't need to be included in the returned data
+        
+        return search_data
 
     except JiraServiceError as e:
         # Re-raise JiraServiceError to be handled by the MCP framework
         raise
     except Exception as e:
         # Catch any other unexpected errors and wrap them in JiraServiceError
-        raise JiraServiceError(f"An unexpected error occurred in update_jira_issue_implementation: {e}")
-
-# Future JIRA tool implementations (e.g., search, update) would go here.
-# def search_jira_issues_implementation(jira_client: JiraClient, jql_query: str) -> List[Dict[str,Any]]:
-#     # ...
-#     pass 
+        raise JiraServiceError(f"Unexpected error occurred in search_jira_issues_implementation: {e}") 
