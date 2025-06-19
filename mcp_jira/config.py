@@ -190,7 +190,7 @@ def load_config(config_file_path_override: Optional[str] = None) -> ServerConfig
         )
     
     server_name = str(raw_config_from_file.get("name", "MCP Jira"))
-    log_level = str(raw_config_from_file.get("log_level", "INFO")).upper()
+    log_level = os.getenv("LOG_LEVEL", str(raw_config_from_file.get("log_level", "INFO"))).upper()
 
     return ServerConfig(
         default_site_alias=final_default_site_alias,
