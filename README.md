@@ -157,12 +157,37 @@ Updates an existing JIRA issue. You can modify fields such as the summary, descr
 
 #### search_jira_issues
 
-Search for JIRA issues using JQL (JIRA Query Language) syntax. Specify a JQL query to find issues matching your criteria. Returns a list of matching issues with key, summary, status, and assignee information.
+Search for JIRA issues using JQL (JIRA Query Language) syntax. Specify a JQL query to find issues matching your criteria.
+
+**Parameters:**
+- `query` (required): JQL query string to search for issues
+- `site_alias` (optional): Site alias for multi-site configurations
+- `basic_only` (optional, default: False): Controls the level of detail returned
+  - When `False` (default): Returns comprehensive issue data including all standard fields, issue links, remote links, comments, and worklogs
+  - When `True`: Returns only key, summary, and description for better performance
+
+**Returns:**
+- In basic mode: Issue key, summary, and description
+- In full mode: Complete issue details including:
+  - Standard fields (project, type, status, priority, assignee, dates)
+  - Issue links (relationships to other JIRA issues like blocks, is blocked by, relates to, etc.)
+  - Remote links (web links, Confluence pages, etc.)
+  - Comments with author and timestamp
+  - Worklogs with time tracking information
 
 Example queries:
 - `project = MYPROJECT`
 - `project = MYPROJECT AND status = 'In Progress'`
 - `assignee = currentUser() AND created >= -7d`
+
+Example usage:
+```
+# Get basic issue information (faster)
+search_jira_issues(query="project = ABC", basic_only=True)
+
+# Get comprehensive issue details (default)
+search_jira_issues(query="project = ABC AND updated >= -7d")
+```
 
 ## Logging
 

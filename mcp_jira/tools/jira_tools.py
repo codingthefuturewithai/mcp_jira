@@ -123,18 +123,26 @@ def update_jira_issue(
 def search_jira_issues_implementation(
     query: str,
     site_alias: Optional[str] = None,
-    max_results: int = 50
+    max_results: int = 50,
+    basic_only: bool = False
 ) -> Dict[str, Any]:
     """
     Implementation for searching JIRA issues using JQL.
     Returns the query and parameters for the JiraClient.search call.
     The site_alias is used by the calling layer for configuration resolution.
+    
+    Args:
+        query: JQL query string
+        site_alias: Optional site alias for multi-site configurations
+        max_results: Maximum number of results to return (default: 50)
+        basic_only: If True, return only key, summary, and description for each issue (default: False)
     """
     try:
         # Prepare search parameters for the client
         search_data = {
             "jql_query": query,
-            "max_results": max_results
+            "max_results": max_results,
+            "basic_only": basic_only
         }
         
         # Note: site_alias is used by the MCP server layer for configuration resolution

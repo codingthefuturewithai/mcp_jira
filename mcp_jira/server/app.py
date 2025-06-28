@@ -190,7 +190,8 @@ Create a JIRA issue with markdown description converted to ADF.
     )
     def search_jira_issues_tool(
         query: str,
-        site_alias: str = None
+        site_alias: str = None,
+        basic_only: bool = False
     ) -> types.TextContent:
         """
         Search for JIRA issues using JQL syntax.
@@ -198,16 +199,18 @@ Create a JIRA issue with markdown description converted to ADF.
         Args:
             query: JQL query string (e.g., "project = ABC AND status = 'In Progress'")
             site_alias: Optional site alias for multi-site configurations
+            basic_only: If True, return only key, summary, and description for each issue (default: False)
         """
         logger.debug(
-            f"search_jira_issues_tool received: query='{query}', site_alias={site_alias}"
+            f"search_jira_issues_tool received: query='{query}', site_alias={site_alias}, basic_only={basic_only}"
         )
         try:
             # 1. Get the prepared search data (using default max_results)
             search_data = jira_tools.search_jira_issues_implementation(
                 query=query,
                 site_alias=site_alias,
-                max_results=50  # Default value similar to conduit
+                max_results=50,  # Default value similar to conduit
+                basic_only=basic_only
             )
             logger.debug(f"Search data prepared by implementation: {search_data}")
 
@@ -222,33 +225,77 @@ Create a JIRA issue with markdown description converted to ADF.
             # 4. Call the JiraClient to search for issues
             search_results = jira_client.search(
                 jql_query=search_data["jql_query"],
-                max_results=search_data["max_results"]
+                max_results=search_data["max_results"],
+                basic_only=search_data["basic_only"]
             )
             logger.info(f"JIRA search found {len(search_results)} issues")
 
-            # Format results - include all the rich information like create/update tools
+            # Format results based on basic_only mode
             if not search_results:
                 response_text = f"No issues found for query: {query}"
             else:
-                # Format with rich information similar to what create/update tools handle
                 formatted_results = []
                 for issue in search_results:
-                    # Build detailed issue information
-                    issue_lines = [
-                        f"**{issue['key']}**: {issue['summary']}",
-                        f"  - **Project**: {issue['project'] or 'N/A'}",
-                        f"  - **Type**: {issue['issue_type'] or 'N/A'}",
-                        f"  - **Status**: {issue['status'] or 'N/A'}",
-                        f"  - **Priority**: {issue['priority'] or 'N/A'}",
-                        f"  - **Assignee**: {issue['assignee'] or 'Unassigned'}",
-                        f"  - **Created**: {issue['created'] or 'N/A'}",
-                        f"  - **Updated**: {issue['updated'] or 'N/A'}",
-                        f"  - **URL**: {issue['url']}"
-                    ]
-                    
-                    # Include description if available
-                    if issue.get('description'):
-                        issue_lines.append(f"  - **Description**: {issue['description']}")
+                    if search_data["basic_only"]:
+                        # Basic mode: show only key, summary, and description
+                        issue_lines = [
+                            f"**{issue['key']}**: {issue['summary']}"
+                        ]
+                        
+                        # Include description if available
+                        if issue.get('description'):
+                            issue_lines.append(f"  - **Description**: {issue['description']}")
+                    else:
+                        # Full mode: show all available information
+                        issue_lines = [
+                            f"**{issue['key']}**: {issue['summary']}",
+                            f"  - **Project**: {issue['project'] or 'N/A'}",
+                            f"  - **Type**: {issue['issue_type'] or 'N/A'}",
+                            f"  - **Status**: {issue['status'] or 'N/A'}",
+                            f"  - **Priority**: {issue['priority'] or 'N/A'}",
+                            f"  - **Assignee**: {issue['assignee'] or 'Unassigned'}",
+                            f"  - **Created**: {issue['created'] or 'N/A'}",
+                            f"  - **Updated**: {issue['updated'] or 'N/A'}",
+                            f"  - **URL**: {issue['url']}"
+                        ]
+                        
+                        # Include description if available
+                        if issue.get('description'):
+                            issue_lines.append(f"  - **Description**: {issue['description']}")
+                        
+                        # Include issue links (links to other JIRA issues)
+                        if issue.get('issue_links'):
+                            issue_lines.append(f"  - **Issue Links**:")
+                            for link in issue['issue_links']:
+                                if link.get('direction') == 'inward':
+                                    issue_lines.append(f"    - {link['inward']}: {link['issue_key']} - {link['issue_summary']} ({link['issue_status']})")
+                                else:
+                                    issue_lines.append(f"    - {link['outward']}: {link['issue_key']} - {link['issue_summary']} ({link['issue_status']})")
+                        
+                        # Include remote links if available
+                        if issue.get('remote_links'):
+                            issue_lines.append(f"  - **Remote Links**:")
+                            for link in issue['remote_links']:
+                                if link.get('url') and link.get('title'):
+                                    issue_lines.append(f"    - [{link['title']}]({link['url']})")
+                        
+                        # Include comments if available
+                        if issue.get('comments'):
+                            issue_lines.append(f"  - **Comments** ({len(issue['comments'])} total):")
+                            # Show first 3 comments to avoid too much output
+                            for comment in issue['comments'][:3]:
+                                issue_lines.append(f"    - **{comment['author']}** ({comment['created']}):")
+                                # Truncate long comments
+                                body = comment['body'][:200] + "..." if len(comment['body']) > 200 else comment['body']
+                                issue_lines.append(f"      {body}")
+                            if len(issue['comments']) > 3:
+                                issue_lines.append(f"    - ... and {len(issue['comments']) - 3} more comments")
+                        
+                        # Include worklogs if available
+                        if issue.get('worklogs'):
+                            total_seconds = sum(w.get('timeSpentSeconds', 0) for w in issue['worklogs'])
+                            total_hours = total_seconds / 3600
+                            issue_lines.append(f"  - **Worklogs** ({len(issue['worklogs'])} entries, {total_hours:.1f} hours total)")
                     
                     formatted_results.append("\n".join(issue_lines))
                 

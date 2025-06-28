@@ -212,13 +212,14 @@ class JiraClient:
         except Exception as e:
             raise JiraServiceError(f"Error updating issue: {str(e)}")
 
-    def search(self, jql_query: str, max_results: int = 50) -> List[Dict[str, Any]]:
+    def search(self, jql_query: str, max_results: int = 50, basic_only: bool = False) -> List[Dict[str, Any]]:
         """
         Search for JIRA issues using JQL (Jira Query Language).
         
         Args:
             jql_query: JQL query string (e.g., "project = ABC AND status = 'In Progress'")
             max_results: Maximum number of results to return (default: 50)
+            basic_only: If True, return only key, summary, and description (default: False)
             
         Returns:
             List of issue dictionaries containing search results
@@ -228,10 +229,17 @@ class JiraClient:
         """
         try:
             # Build search parameters
+            if basic_only:
+                # For basic_only mode, request only key, summary, and description
+                fields = "key,summary,description"
+            else:
+                # For full mode, request all standard fields including issue links
+                fields = "key,summary,status,assignee,priority,created,updated,description,issuetype,project,issuelinks"
+            
             params = {
                 "jql": jql_query,
                 "maxResults": max_results,
-                "fields": "key,summary,status,assignee,priority,created,updated,description,issuetype,project"
+                "fields": fields
             }
             
             # Make API request
@@ -255,21 +263,70 @@ class JiraClient:
                         # This is a simplified extraction - could be enhanced later
                         description = self._extract_text_from_adf(adf_description)
                     
-                    formatted_issue = {
-                        "key": issue.get("key"),
-                        "id": issue.get("id"),
-                        "summary": fields.get("summary"),
-                        "description": description,
-                        "status": fields.get("status", {}).get("name"),
-                        "assignee": fields.get("assignee", {}).get("displayName") if fields.get("assignee") else None,
-                        "assignee_email": fields.get("assignee", {}).get("emailAddress") if fields.get("assignee") else None,
-                        "priority": fields.get("priority", {}).get("name") if fields.get("priority") else None,
-                        "issue_type": fields.get("issuetype", {}).get("name") if fields.get("issuetype") else None,
-                        "project": fields.get("project", {}).get("key") if fields.get("project") else None,
-                        "created": fields.get("created"),
-                        "updated": fields.get("updated"),
-                        "url": f"{self.base_url}/browse/{issue.get('key')}"
-                    }
+                    if basic_only:
+                        # Basic mode: only include key, summary, and description
+                        formatted_issue = {
+                            "key": issue.get("key"),
+                            "summary": fields.get("summary"),
+                            "description": description
+                        }
+                    else:
+                        # Full mode: include all standard fields
+                        formatted_issue = {
+                            "key": issue.get("key"),
+                            "id": issue.get("id"),
+                            "summary": fields.get("summary"),
+                            "description": description,
+                            "status": fields.get("status", {}).get("name") if fields.get("status") else None,
+                            "assignee": fields.get("assignee", {}).get("displayName") if fields.get("assignee") else None,
+                            "assignee_email": fields.get("assignee", {}).get("emailAddress") if fields.get("assignee") else None,
+                            "priority": fields.get("priority", {}).get("name") if fields.get("priority") else None,
+                            "issue_type": fields.get("issuetype", {}).get("name") if fields.get("issuetype") else None,
+                            "project": fields.get("project", {}).get("key") if fields.get("project") else None,
+                            "created": fields.get("created"),
+                            "updated": fields.get("updated"),
+                            "url": f"{self.base_url}/browse/{issue.get('key')}"
+                        }
+                        
+                        # Process issue links (links to other JIRA issues)
+                        issue_links = []
+                        if fields.get("issuelinks"):
+                            for link in fields.get("issuelinks", []):
+                                link_data = {
+                                    "type": link.get("type", {}).get("name"),
+                                    "inward": link.get("type", {}).get("inward"),
+                                    "outward": link.get("type", {}).get("outward")
+                                }
+                                
+                                # Check if it's an inward or outward link
+                                if "inwardIssue" in link:
+                                    linked_issue = link["inwardIssue"]
+                                    link_data["direction"] = "inward"
+                                    link_data["issue_key"] = linked_issue.get("key")
+                                    link_data["issue_summary"] = linked_issue.get("fields", {}).get("summary")
+                                    link_data["issue_status"] = linked_issue.get("fields", {}).get("status", {}).get("name")
+                                elif "outwardIssue" in link:
+                                    linked_issue = link["outwardIssue"]
+                                    link_data["direction"] = "outward"
+                                    link_data["issue_key"] = linked_issue.get("key")
+                                    link_data["issue_summary"] = linked_issue.get("fields", {}).get("summary")
+                                    link_data["issue_status"] = linked_issue.get("fields", {}).get("status", {}).get("name")
+                                
+                                issue_links.append(link_data)
+                        
+                        formatted_issue["issue_links"] = issue_links
+                        
+                        # Fetch additional data for full mode
+                        issue_key = issue.get("key")
+                        
+                        # Get remote links
+                        formatted_issue["remote_links"] = self.get_issue_remote_links(issue_key)
+                        
+                        # Get comments
+                        formatted_issue["comments"] = self.get_issue_comments(issue_key)
+                        
+                        # Get worklogs
+                        formatted_issue["worklogs"] = self.get_issue_worklogs(issue_key)
                     formatted_issues.append(formatted_issue)
                 
                 logger.debug(f"SEARCH: Found {len(formatted_issues)} issues for query: {jql_query}")
@@ -282,6 +339,158 @@ class JiraClient:
             raise JiraServiceError(f"Network error searching issues: {str(e)}")
         except Exception as e:
             raise JiraServiceError(f"Error searching issues: {str(e)}")
+
+    def get_issue_remote_links(self, issue_key: str) -> List[Dict[str, Any]]:
+        """
+        Get remote links for a specific issue.
+        
+        Args:
+            issue_key: The JIRA issue key (e.g., "ABC-123")
+            
+        Returns:
+            List of remote link dictionaries
+            
+        Raises:
+            JiraServiceError: If fetching remote links fails
+        """
+        try:
+            url = f"{self.base_url}/rest/api/2/issue/{issue_key}/remotelink"
+            response = self.session.get(url)
+            
+            if response.status_code == 200:
+                remote_links = response.json()
+                formatted_links = []
+                
+                for link in remote_links:
+                    formatted_link = {
+                        "id": link.get("id"),
+                        "url": link.get("object", {}).get("url"),
+                        "title": link.get("object", {}).get("title"),
+                        "relationship": link.get("relationship"),
+                        "application": link.get("application", {}).get("name") if link.get("application") else None
+                    }
+                    formatted_links.append(formatted_link)
+                
+                return formatted_links
+            else:
+                logger.warning(f"Failed to fetch remote links for {issue_key}: {response.status_code}")
+                return []
+                
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Network error fetching remote links: {str(e)}")
+            return []
+        except Exception as e:
+            logger.error(f"Error fetching remote links: {str(e)}")
+            return []
+
+    def get_issue_comments(self, issue_key: str) -> List[Dict[str, Any]]:
+        """
+        Get comments for a specific issue.
+        
+        Args:
+            issue_key: The JIRA issue key (e.g., "ABC-123")
+            
+        Returns:
+            List of comment dictionaries
+            
+        Raises:
+            JiraServiceError: If fetching comments fails
+        """
+        try:
+            url = f"{self.base_url}/rest/api/2/issue/{issue_key}/comment"
+            response = self.session.get(url)
+            
+            if response.status_code == 200:
+                result = response.json()
+                comments = result.get("comments", [])
+                formatted_comments = []
+                
+                for comment in comments:
+                    # Extract text from body (can be plain text or ADF)
+                    body_text = ""
+                    body = comment.get("body")
+                    if body:
+                        logger.debug(f"Comment body structure: {json.dumps(body, indent=2)}")
+                        if isinstance(body, str):
+                            # Plain text format
+                            body_text = body
+                        elif isinstance(body, dict):
+                            # ADF format
+                            body_text = self._extract_text_from_adf(body)
+                        logger.debug(f"Extracted text: '{body_text}'")
+                    
+                    formatted_comment = {
+                        "id": comment.get("id"),
+                        "author": comment.get("author", {}).get("displayName"),
+                        "created": comment.get("created"),
+                        "updated": comment.get("updated"),
+                        "body": body_text
+                    }
+                    formatted_comments.append(formatted_comment)
+                
+                return formatted_comments
+            else:
+                logger.warning(f"Failed to fetch comments for {issue_key}: {response.status_code}")
+                return []
+                
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Network error fetching comments: {str(e)}")
+            return []
+        except Exception as e:
+            logger.error(f"Error fetching comments: {str(e)}")
+            return []
+
+    def get_issue_worklogs(self, issue_key: str) -> List[Dict[str, Any]]:
+        """
+        Get worklogs for a specific issue.
+        
+        Args:
+            issue_key: The JIRA issue key (e.g., "ABC-123")
+            
+        Returns:
+            List of worklog dictionaries
+            
+        Raises:
+            JiraServiceError: If fetching worklogs fails
+        """
+        try:
+            url = f"{self.base_url}/rest/api/2/issue/{issue_key}/worklog"
+            response = self.session.get(url)
+            
+            if response.status_code == 200:
+                result = response.json()
+                worklogs = result.get("worklogs", [])
+                formatted_worklogs = []
+                
+                for worklog in worklogs:
+                    # Extract text from ADF comment if present
+                    comment_text = ""
+                    if worklog.get("comment"):
+                        comment_text = self._extract_text_from_adf(worklog["comment"])
+                    
+                    formatted_worklog = {
+                        "id": worklog.get("id"),
+                        "author": worklog.get("author", {}).get("displayName"),
+                        "created": worklog.get("created"),
+                        "updated": worklog.get("updated"),
+                        "started": worklog.get("started"),
+                        "timeSpent": worklog.get("timeSpent"),
+                        "timeSpentSeconds": worklog.get("timeSpentSeconds"),
+                        "comment": comment_text
+                    }
+                    formatted_worklogs.append(formatted_worklog)
+                
+                return formatted_worklogs
+            else:
+                logger.warning(f"Failed to fetch worklogs for {issue_key}: {response.status_code}")
+                return []
+                
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Network error fetching worklogs: {str(e)}")
+            return []
+        except Exception as e:
+            logger.error(f"Error fetching worklogs: {str(e)}")
+            return []
 
     def _extract_text_from_adf(self, adf_content: Dict[str, Any]) -> str:
         """
