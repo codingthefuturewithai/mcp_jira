@@ -2,6 +2,42 @@
 
 A Model Context Protocol (MCP) server that provides seamless JIRA integration for AI tools. Create and manage JIRA issues with rich markdown formatting, automatic conversion to Atlassian Document Format (ADF), and flexible field management.
 
+## Quick Setup with Claude Code
+
+### 🚀 Let AI Help You Set Up
+
+Copy and paste one of these prompts to your AI coding assistant:
+
+**For Setup Help:**
+```
+Please help me set up the MCP JIRA Server for Claude Code. 
+Read the setup guide at: SETUP_ASSISTANT_PROMPT.md
+```
+
+**For Usage Examples:**
+```
+Show me how to use MCP JIRA Server effectively.
+Read the usage guide at: USAGE_ASSISTANT_PROMPT.md
+```
+
+### ⚡ Quick Install (if you know what you're doing)
+
+```bash
+# Clone and install
+git clone https://github.com/codingthefuturewithai/mcp_jira.git
+cd mcp_jira
+uv venv && source .venv/bin/activate  # or use pip
+uv pip install -e .
+
+# Configure (creates template on first run)
+.venv/bin/mcp_jira-server
+
+# Add to Claude Code
+claude mcp add mcp_jira stdio "$(pwd)/.venv/bin/mcp_jira-server"
+```
+
+Then edit the config file and restart Claude Code. See full instructions below.
+
 ## Overview
 
 This MCP server enables AI assistants to interact directly with JIRA instances through the JIRA REST API v3. It handles the complexity of markdown-to-ADF conversion, field mapping, and multi-site configuration, allowing AI tools to create well-formatted JIRA issues with minimal setup.
