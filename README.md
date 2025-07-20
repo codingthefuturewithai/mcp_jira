@@ -11,7 +11,7 @@ Copy and paste one of these prompts to your AI coding assistant:
 **For Setup Help:**
 ```
 Please help me set up the MCP JIRA Server for Claude Code. 
-Read the setup guide at: SETUP_PROMPT.md
+Read the setup guide at: SETUP_ASSISTANT_PROMPT.md
 ```
 
 **For Usage Examples:**
