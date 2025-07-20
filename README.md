@@ -11,7 +11,7 @@ Copy and paste one of these prompts to your AI coding assistant:
 **For Setup Help:**
 ```
 Please help me set up the MCP JIRA Server for Claude Code. 
-Read the setup guide at: SETUP_ASSISTANT_PROMPT.md
+Read the setup guide at: SETUP_PROMPT.md
 ```
 
 **For Usage Examples:**
@@ -23,17 +23,18 @@ Read the usage guide at: USAGE_ASSISTANT_PROMPT.md
 ### ⚡ Quick Install (if you know what you're doing)
 
 ```bash
-# Clone and install
-git clone https://github.com/codingthefuturewithai/mcp_jira.git
-cd mcp_jira
-uv venv && source .venv/bin/activate  # or use pip
-uv pip install -e .
+# Install MCP JIRA Server as an isolated tool (recommended)
+uv tool install git+https://github.com/codingthefuturewithai/mcp_jira.git
 
 # Configure (creates template on first run)
-.venv/bin/mcp_jira-server
+mcp_jira-server
 
-# Add to Claude Code
-claude mcp add mcp_jira stdio "$(pwd)/.venv/bin/mcp_jira-server"
+# Add to Claude Code with absolute path
+# macOS/Linux:
+claude mcp add mcp_jira stdio "$HOME/.local/share/uv/tools/mcp-jira/bin/mcp_jira-server"
+
+# Windows:
+claude mcp add mcp_jira stdio "%USERPROFILE%\.local\share\uv\tools\mcp-jira\Scripts\mcp_jira-server.exe"
 ```
 
 Then edit the config file and restart Claude Code. See full instructions below.
@@ -69,7 +70,43 @@ Key architectural components:
 
 ## Installation
 
-### From Source
+### Recommended Method (Most Reliable)
+
+Use `uv tool install` for complete isolation from other Python projects:
+
+```bash
+# Install UV if not already installed
+# macOS/Linux:
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Windows (PowerShell):
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# Install MCP JIRA Server as an isolated tool
+uv tool install git+https://github.com/codingthefuturewithai/mcp_jira.git
+
+# The tool will be available globally as 'mcp_jira-server'
+# Get the installation path for Claude Desktop configuration
+uv tool dir
+```
+
+**Platform-specific paths:**
+- **macOS/Linux**: `~/.local/share/uv/tools/mcp-jira/bin/mcp_jira-server`
+- **Windows**: `%USERPROFILE%\.local\share\uv\tools\mcp-jira\Scripts\mcp_jira-server.exe`
+
+### Quick Start (Use with Caution)
+
+For quick testing with `uvx` (note: may cause dependency conflicts):
+
+```bash
+# Run directly without installation
+uvx mcp_jira-server
+
+# ⚠️ WARNING: This method may conflict with other Python projects
+# If you experience issues, use the recommended method above
+```
+
+### From Source (Development)
 
 ```bash
 # Clone the repository
@@ -78,11 +115,25 @@ cd mcp_jira
 
 # Create and activate a virtual environment using UV
 uv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
-# Install in development mode using UV
+# Install in development mode
 uv pip install -e .
 ```
+
+### Troubleshooting Installation
+
+**Dependency Conflicts:**
+- If you encounter dependency conflicts, ensure you're using `uv tool install` (recommended method)
+- The isolated installation prevents conflicts with other Python packages
+- For development, always use a virtual environment
+
+**Platform-Specific Issues:**
+- **Windows**: Run PowerShell as Administrator if you encounter permission errors
+- **macOS**: If you get SSL errors, ensure certificates are updated: `brew install ca-certificates`
+- **Linux**: May need to install additional system packages: `sudo apt-get install python3-dev`
+
+For detailed troubleshooting, see the [Confluence documentation](https://codingthefuturewithai.atlassian.net/wiki/spaces/ACT/pages/89161729).
 
 ## Configuration
 

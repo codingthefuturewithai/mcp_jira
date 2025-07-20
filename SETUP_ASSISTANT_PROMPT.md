@@ -35,11 +35,9 @@ First, verify the user's environment:
 
 ### Step 1: Install the Package
 
-First, make sure you're in the mcp_jira directory where you cloned this repository.
-
 Offer multiple installation methods based on user preference:
 
-#### Option A: Using UV (Recommended)
+#### Option A: Using UV Tool Install (Most Reliable - Recommended)
 ```bash
 # Install UV if needed
 # macOS/Linux:
@@ -48,35 +46,46 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 # Windows (PowerShell):
 powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 
+# Install MCP JIRA Server as an isolated tool
+uv tool install git+https://github.com/codingthefuturewithai/mcp_jira.git
+
+# The tool is now available globally as 'mcp_jira-server'
+# No virtual environment activation needed!
+```
+
+**Installation paths:**
+- **macOS/Linux**: `~/.local/share/uv/tools/mcp-jira/bin/mcp_jira-server`
+- **Windows**: `%USERPROFILE%\.local\share\uv\tools\mcp-jira\Scripts\mcp_jira-server.exe`
+
+#### Option B: Quick Start with UVX (Use with Caution)
+```bash
+# For quick testing only
+uvx mcp_jira-server
+
+# ⚠️ WARNING: This method may cause dependency conflicts
+# with other Python projects. Use Option A for production.
+```
+
+#### Option C: From Source (Development)
+```bash
+# Clone the repository first
+git clone https://github.com/codingthefuturewithai/mcp_jira.git
+cd mcp_jira
+
 # Create virtual environment and install
 uv venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 uv pip install -e .
 ```
 
-#### Option B: Using pip with virtual environment
-```bash
-# Create virtual environment
-python -m venv .venv
-
-# Activate it
-# macOS/Linux:
-source .venv/bin/activate
-# Windows:
-.venv\Scripts\activate
-
-# Install package
-pip install -e .
-```
-
-#### Option C: Using pipx (for isolated global install)
+#### Option D: Using pipx (Alternative Isolated Install)
 ```bash
 # Install pipx if needed
 python -m pip install --user pipx
 python -m pipx ensurepath
 
-# Install MCP JIRA
-pipx install -e .
+# Install MCP JIRA from GitHub
+pipx install git+https://github.com/codingthefuturewithai/mcp_jira.git
 ```
 
 ### Step 3: Create JIRA API Token
@@ -102,7 +111,10 @@ Guide the user through these steps:
 
 1. **Run the server once to create config template**:
    ```bash
-   # This will create the config directory and template
+   # If using uv tool install (Option A):
+   mcp_jira-server
+   
+   # If using development install (Option C):
    .venv/bin/mcp_jira-server
    # On Windows: .venv\Scripts\mcp_jira-server.exe
    ```
@@ -129,6 +141,18 @@ Guide the user through these steps:
 
 ### Step 5: Add to Claude Code
 
+#### For UV Tool Install (Option A) - Recommended:
+
+```bash
+# macOS/Linux:
+claude mcp add mcp_jira stdio "$HOME/.local/share/uv/tools/mcp-jira/bin/mcp_jira-server"
+
+# Windows:
+claude mcp add mcp_jira stdio "%USERPROFILE%\.local\share\uv\tools\mcp-jira\Scripts\mcp_jira-server.exe"
+```
+
+#### For Development Install (Option C):
+
 1. **Get the full path to the executable**:
    ```bash
    # macOS/Linux:
@@ -141,10 +165,7 @@ Guide the user through these steps:
 2. **Add to Claude Code configuration**:
    ```bash
    # Replace [FULL_PATH] with the path from step 1
-   claude mcp add-json -s user mcp_jira '{
-     "type": "stdio",
-     "command": "[FULL_PATH]"
-   }'
+   claude mcp add mcp_jira stdio "[FULL_PATH]"
    ```
 
 ### Step 6: Restart Claude Code
