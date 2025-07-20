@@ -26,15 +26,18 @@ Read the usage guide at: USAGE_ASSISTANT_PROMPT.md
 # Install MCP JIRA Server as an isolated tool (recommended)
 uv tool install git+https://github.com/codingthefuturewithai/mcp_jira.git
 
+# Find the installed binary location
+uv tool dir  # Note this path!
+
 # Configure (creates template on first run)
 mcp_jira-server
 
-# Add to Claude Code with absolute path
-# macOS/Linux:
-claude mcp add mcp_jira stdio "$HOME/.local/share/uv/tools/mcp-jira/bin/mcp_jira-server"
+# Add to Claude Code with the EXACT path from uv tool dir
+# macOS/Linux (replace path if your uv tool dir is different):
+claude mcp add mcp_jira stdio "$(uv tool dir)/mcp-jira/bin/mcp_jira-server"
 
-# Windows:
-claude mcp add mcp_jira stdio "%USERPROFILE%\.local\share\uv\tools\mcp-jira\Scripts\mcp_jira-server.exe"
+# Windows (replace path if your uv tool dir is different):
+claude mcp add mcp_jira stdio "$(uv tool dir)\mcp-jira\Scripts\mcp_jira-server.exe"
 ```
 
 Then edit the config file and restart Claude Code. See full instructions below.
@@ -85,12 +88,22 @@ powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 # Install MCP JIRA Server as an isolated tool
 uv tool install git+https://github.com/codingthefuturewithai/mcp_jira.git
 
-# The tool will be available globally as 'mcp_jira-server'
-# Get the installation path for Claude Desktop configuration
+# Find the exact installation path (you'll need this for Claude Desktop)
 uv tool dir
+
+# The binary will be at:
+# macOS/Linux: $(uv tool dir)/mcp-jira/bin/mcp_jira-server
+# Windows: $(uv tool dir)\mcp-jira\Scripts\mcp_jira-server.exe
+
+# To verify the exact path, run:
+# macOS/Linux:
+ls -la $(uv tool dir)/mcp-jira/bin/mcp_jira-server
+
+# Windows:
+dir "$(uv tool dir)\mcp-jira\Scripts\mcp_jira-server.exe"
 ```
 
-**Platform-specific paths:**
+**Default installation paths:**
 - **macOS/Linux**: `~/.local/share/uv/tools/mcp-jira/bin/mcp_jira-server`
 - **Windows**: `%USERPROFILE%\.local\share\uv\tools\mcp-jira\Scripts\mcp_jira-server.exe`
 

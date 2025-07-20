@@ -49,11 +49,24 @@ powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 # Install MCP JIRA Server as an isolated tool
 uv tool install git+https://github.com/codingthefuturewithai/mcp_jira.git
 
-# The tool is now available globally as 'mcp_jira-server'
-# No virtual environment activation needed!
+# Find where UV installed the binary (you'll need this path for Claude Desktop)
+uv tool dir
+
+# The binary will be located at:
+# macOS/Linux: $(uv tool dir)/mcp-jira/bin/mcp_jira-server
+# Windows: $(uv tool dir)\mcp-jira\Scripts\mcp_jira-server.exe
+
+# Verify the installation and get the exact path:
+# macOS/Linux:
+echo "Your MCP JIRA binary is at: $(uv tool dir)/mcp-jira/bin/mcp_jira-server"
+ls -la $(uv tool dir)/mcp-jira/bin/mcp_jira-server
+
+# Windows:
+echo "Your MCP JIRA binary is at: $(uv tool dir)\mcp-jira\Scripts\mcp_jira-server.exe"
+dir "$(uv tool dir)\mcp-jira\Scripts\mcp_jira-server.exe"
 ```
 
-**Installation paths:**
+**Default installation paths (if uv tool dir returns ~/.local/share/uv/tools):**
 - **macOS/Linux**: `~/.local/share/uv/tools/mcp-jira/bin/mcp_jira-server`
 - **Windows**: `%USERPROFILE%\.local\share\uv\tools\mcp-jira\Scripts\mcp_jira-server.exe`
 
@@ -78,15 +91,6 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 uv pip install -e .
 ```
 
-#### Option D: Using pipx (Alternative Isolated Install)
-```bash
-# Install pipx if needed
-python -m pip install --user pipx
-python -m pipx ensurepath
-
-# Install MCP JIRA from GitHub
-pipx install git+https://github.com/codingthefuturewithai/mcp_jira.git
-```
 
 ### Step 3: Create JIRA API Token
 
@@ -143,12 +147,18 @@ Guide the user through these steps:
 
 #### For UV Tool Install (Option A) - Recommended:
 
+**IMPORTANT**: Use the exact path from Step 1 where you found the binary!
+
 ```bash
-# macOS/Linux:
+# macOS/Linux (replace with your actual path from uv tool dir):
 claude mcp add mcp_jira stdio "$HOME/.local/share/uv/tools/mcp-jira/bin/mcp_jira-server"
 
-# Windows:
+# Windows (replace with your actual path from uv tool dir):
 claude mcp add mcp_jira stdio "%USERPROFILE%\.local\share\uv\tools\mcp-jira\Scripts\mcp_jira-server.exe"
+
+# If your uv tool dir is different, use that path instead!
+# For example, if uv tool dir shows /opt/uv/tools, use:
+# claude mcp add mcp_jira stdio "/opt/uv/tools/mcp-jira/bin/mcp_jira-server"
 ```
 
 #### For Development Install (Option C):
