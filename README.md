@@ -303,6 +303,7 @@ Valid log levels: `DEBUG`, `INFO` (default if not specified), `WARNING`, `ERROR`
 
 See [DEVELOPMENT.md](DEVELOPMENT.md) for detailed development instructions, including:
 - Setting up the development environment
+- Testing with MCP Inspector
 - Running tests
 - Contributing guidelines
 - Architecture overview
