@@ -138,6 +138,37 @@ wheels = [
 ]
 
 [[package]]
+name = "ctf-mcp-jira"
+version = "0.1.5"
+source = { editable = "." }
+dependencies = [
+    { name = "anyio" },
+    { name = "markdown-it-py" },
+    { name = "mcp", extra = ["cli"] },
+    { name = "mdurl" },
+    { name = "platformdirs" },
+    { name = "pyyaml" },
+    { name = "requests" },
+    { name = "starlette" },
+    { name = "streamlit" },
+    { name = "uvicorn" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "anyio", specifier = ">=4.0.0" },
+    { name = "markdown-it-py", specifier = ">=3.0.0" },
+    { name = "mcp", extras = ["cli"], specifier = ">=1.0.0" },
+    { name = "mdurl", specifier = ">=0.1.2" },
+    { name = "platformdirs", specifier = ">=4.2.2" },
+    { name = "pyyaml", specifier = ">=6.0.1" },
+    { name = "requests", specifier = ">=2.31.0" },
+    { name = "starlette", specifier = ">=0.36.0" },
+    { name = "streamlit" },
+    { name = "uvicorn", specifier = ">=0.27.0" },
+]
+
+[[package]]
 name = "gitdb"
 version = "4.0.12"
 source = { registry = "https://pypi.org/simple" }
@@ -319,37 +350,6 @@ wheels = [
 cli = [
     { name = "python-dotenv" },
     { name = "typer" },
-]
-
-[[package]]
-name = "mcp-jira"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "anyio" },
-    { name = "markdown-it-py" },
-    { name = "mcp", extra = ["cli"] },
-    { name = "mdurl" },
-    { name = "platformdirs" },
-    { name = "pyyaml" },
-    { name = "requests" },
-    { name = "starlette" },
-    { name = "streamlit" },
-    { name = "uvicorn" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "anyio", specifier = ">=4.0.0" },
-    { name = "markdown-it-py", specifier = ">=3.0.0" },
-    { name = "mcp", extras = ["cli"], specifier = ">=1.0.0" },
-    { name = "mdurl", specifier = ">=0.1.2" },
-    { name = "platformdirs", specifier = ">=4.2.2" },
-    { name = "pyyaml", specifier = ">=6.0.1" },
-    { name = "requests", specifier = ">=2.31.0" },
-    { name = "starlette", specifier = ">=0.36.0" },
-    { name = "streamlit" },
-    { name = "uvicorn", specifier = ">=0.27.0" },
 ]
 
 [[package]]
