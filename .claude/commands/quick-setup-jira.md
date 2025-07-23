@@ -20,26 +20,22 @@ If UV is not installed, I'll provide the installation command for your platform:
 - **macOS/Linux**: `curl -LsSf https://astral.sh/uv/install.sh | sh`
 - **Windows**: `powershell -c "irm https://astral.sh/uv/install.ps1 | iex"`
 
-## Step 2: Install MCP JIRA Server
+## Step 2: Verify MCP JIRA Server Installation
 
-Now I'll install the MCP JIRA Server as an isolated tool:
-
-```bash
-uv tool install ctf-mcp-jira
-```
-
-Let me also get the installation directory for later use:
+Let me verify that the MCP JIRA Server package is available:
 
 ```bash
-uv tool dir
+uvx --from ctf-mcp-jira ctf-mcp-jira-server --help
 ```
+
+This will download the package if needed and show the available options.
 
 ## Step 3: Launch Configuration UI
 
 I'll now launch the web-based configuration interface:
 
 ```bash
-$(uv tool dir)/ctf-mcp-jira/bin/ctf-mcp-jira-server --ui
+uvx --from ctf-mcp-jira ctf-mcp-jira-server --ui
 ```
 
 This will open your browser with the Streamlit configuration UI at http://localhost:8501.
@@ -61,21 +57,13 @@ The configuration will be saved to:
 
 ## Step 4: Add to Claude Code
 
-Now I'll add the MCP server to Claude Code. First, let me determine the correct binary path:
+Now I'll add the MCP server to Claude Code using the uvx command:
 
 ```bash
-# For macOS/Linux
-echo "$(uv tool dir)/ctf-mcp-jira/bin/ctf-mcp-jira-server"
-
-# For Windows
-echo "$(uv tool dir)\ctf-mcp-jira\Scripts\ctf-mcp-jira-server.exe"
+claude mcp add mcp_jira stdio "uvx --from ctf-mcp-jira ctf-mcp-jira-server"
 ```
 
-Using the path from above, I'll add it to Claude Code:
-
-```bash
-claude mcp add mcp_jira stdio "[BINARY_PATH]"
-```
+This tells Claude Code to run the MCP server using uvx, which will handle downloading and running the server in an isolated environment.
 
 ## Step 5: Verify Installation
 
@@ -108,5 +96,7 @@ To use a different JIRA site than the default, add the `site_alias` parameter to
 
 **Note**: To reconfigure the server in the future, you can run:
 ```bash
-$(uv tool dir)/ctf-mcp-jira/bin/ctf-mcp-jira-server --ui
+uvx --from ctf-mcp-jira ctf-mcp-jira-server --ui
 ```
+
+**Important**: Using `uvx` means the package is downloaded fresh each time, which can help avoid stale environment issues but requires an internet connection for each use.

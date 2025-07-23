@@ -33,11 +33,8 @@ First, verify the user's environment:
 
 ## Installation Steps
 
-### Step 1: Install the Package
+### Step 1: Install UV Package Manager
 
-Offer multiple installation methods based on user preference:
-
-#### Option A: Using UV Tool Install (Most Reliable - Recommended)
 ```bash
 # Install UV if needed
 # macOS/Linux:
@@ -45,41 +42,31 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Windows (PowerShell):
 powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
-
-# Install MCP JIRA Server as an isolated tool
-uv tool install git+https://github.com/codingthefuturewithai/mcp_jira.git
-
-# Find where UV installed the binary (you'll need this path for Claude Desktop)
-uv tool dir
-
-# The binary will be located at:
-# macOS/Linux: $(uv tool dir)/mcp-jira/bin/mcp_jira-server
-# Windows: $(uv tool dir)\mcp-jira\Scripts\mcp_jira-server.exe
-
-# Verify the installation and get the exact path:
-# macOS/Linux:
-echo "Your MCP JIRA binary is at: $(uv tool dir)/mcp-jira/bin/mcp_jira-server"
-ls -la $(uv tool dir)/mcp-jira/bin/mcp_jira-server
-
-# Windows:
-echo "Your MCP JIRA binary is at: $(uv tool dir)\mcp-jira\Scripts\mcp_jira-server.exe"
-dir "$(uv tool dir)\mcp-jira\Scripts\mcp_jira-server.exe"
 ```
 
-**Default installation paths (if uv tool dir returns ~/.local/share/uv/tools):**
-- **macOS/Linux**: `~/.local/share/uv/tools/mcp-jira/bin/mcp_jira-server`
-- **Windows**: `%USERPROFILE%\.local\share\uv\tools\mcp-jira\Scripts\mcp_jira-server.exe`
+### Step 2: Configure MCP JIRA Server
 
-#### Option B: Quick Start with UVX (Use with Caution)
+The MCP JIRA Server is available on PyPI as `ctf-mcp-jira`. We'll use UVX to run it without permanent installation.
+
+#### Option A: Using UVX (Recommended)
+
+UVX runs packages in isolated environments without persistent installation:
+
 ```bash
-# For quick testing only
-uvx mcp_jira-server
+# Launch the configuration UI to set up your JIRA connection
+uvx --from ctf-mcp-jira ctf-mcp-jira-server --ui
 
-# ⚠️ WARNING: This method may cause dependency conflicts
-# with other Python projects. Use Option A for production.
+# This will open a browser at http://localhost:8501
+# Follow the UI to configure your JIRA settings
 ```
 
-#### Option C: From Source (Development)
+**Benefits of UVX:**
+- No persistent installation to manage
+- Always runs in a fresh, isolated environment
+- Automatically downloads updates when available
+- No "uninstall and reinstall" issues
+
+#### Option B: From Source (Development)
 ```bash
 # Clone the repository first
 git clone https://github.com/codingthefuturewithai/mcp_jira.git
@@ -113,22 +100,19 @@ Guide the user through these steps:
 
 ### Step 4: Configure MCP JIRA
 
-1. **Run the server once to create config template**:
+The configuration UI from Step 2 will guide you through setup. If you need to edit the configuration later:
+
+1. **Launch the configuration UI again**:
    ```bash
-   # If using uv tool install (Option A):
-   mcp_jira-server
-   
-   # If using development install (Option C):
-   .venv/bin/mcp_jira-server
-   # On Windows: .venv\Scripts\mcp_jira-server.exe
+   uvx --from ctf-mcp-jira ctf-mcp-jira-server --ui
    ```
 
-2. **Locate the config file**:
+2. **Or manually edit the config file**:
    - **macOS**: `~/Library/Application Support/mcp_jira/config.yaml`
    - **Linux**: `~/.config/mcp_jira/config.yaml`
    - **Windows**: `%APPDATA%\MCPJira\mcp_jira\config.yaml`
 
-3. **Edit the configuration**:
+   Example configuration:
    ```yaml
    name: "Company JIRA"
    log_level: "INFO"
@@ -145,23 +129,16 @@ Guide the user through these steps:
 
 ### Step 5: Add to Claude Code
 
-#### For UV Tool Install (Option A) - Recommended:
-
-**IMPORTANT**: Use the exact path from Step 1 where you found the binary!
+#### For UVX (Option A) - Recommended:
 
 ```bash
-# macOS/Linux (replace with your actual path from uv tool dir):
-claude mcp add mcp_jira stdio "$HOME/.local/share/uv/tools/mcp-jira/bin/mcp_jira-server"
-
-# Windows (replace with your actual path from uv tool dir):
-claude mcp add mcp_jira stdio "%USERPROFILE%\.local\share\uv\tools\mcp-jira\Scripts\mcp_jira-server.exe"
-
-# If your uv tool dir is different, use that path instead!
-# For example, if uv tool dir shows /opt/uv/tools, use:
-# claude mcp add mcp_jira stdio "/opt/uv/tools/mcp-jira/bin/mcp_jira-server"
+# Add the MCP server to Claude Code
+claude mcp add mcp_jira stdio "uvx --from ctf-mcp-jira ctf-mcp-jira-server"
 ```
 
-#### For Development Install (Option C):
+This command tells Claude Code to use UVX to run the MCP server, which ensures it always runs in a fresh environment.
+
+#### For Development Install (Option B):
 
 1. **Get the full path to the executable**:
    ```bash

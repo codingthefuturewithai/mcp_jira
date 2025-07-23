@@ -23,24 +23,17 @@ Read the usage guide at: USAGE_ASSISTANT_PROMPT.md
 ### ⚡ Quick Install (if you know what you're doing)
 
 ```bash
-# Install MCP JIRA Server as an isolated tool (recommended)
-uv tool install git+https://github.com/codingthefuturewithai/mcp_jira.git
+# Install UV if not already installed:
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Find the installed binary location
-uv tool dir  # Note this path!
+# Configure JIRA settings via web UI:
+uvx --from ctf-mcp-jira ctf-mcp-jira-server --ui
 
-# Configure (creates template on first run)
-mcp_jira-server
-
-# Add to Claude Code with the EXACT path from uv tool dir
-# macOS/Linux (replace path if your uv tool dir is different):
-claude mcp add mcp_jira stdio "$(uv tool dir)/mcp-jira/bin/mcp_jira-server"
-
-# Windows (replace path if your uv tool dir is different):
-claude mcp add mcp_jira stdio "$(uv tool dir)\mcp-jira\Scripts\mcp_jira-server.exe"
+# Add to Claude Code:
+claude mcp add mcp_jira stdio "uvx --from ctf-mcp-jira ctf-mcp-jira-server"
 ```
 
-Then edit the config file and restart Claude Code. See full instructions below.
+Then restart Claude Code. See full instructions below.
 
 ## Overview
 
@@ -73,9 +66,9 @@ Key architectural components:
 
 ## Installation
 
-### Recommended Method (Most Reliable)
+### Recommended Method
 
-Use `uv tool install` for complete isolation from other Python projects:
+Use `uvx` to run MCP JIRA Server without persistent installation:
 
 ```bash
 # Install UV if not already installed
@@ -85,39 +78,19 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 # Windows (PowerShell):
 powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 
-# Install MCP JIRA Server as an isolated tool
-uv tool install git+https://github.com/codingthefuturewithai/mcp_jira.git
+# Configure JIRA settings via web UI:
+uvx --from ctf-mcp-jira ctf-mcp-jira-server --ui
 
-# Find the exact installation path (you'll need this for Claude Desktop)
-uv tool dir
-
-# The binary will be at:
-# macOS/Linux: $(uv tool dir)/mcp-jira/bin/mcp_jira-server
-# Windows: $(uv tool dir)\mcp-jira\Scripts\mcp_jira-server.exe
-
-# To verify the exact path, run:
-# macOS/Linux:
-ls -la $(uv tool dir)/mcp-jira/bin/mcp_jira-server
-
-# Windows:
-dir "$(uv tool dir)\mcp-jira\Scripts\mcp_jira-server.exe"
+# This launches a web interface at http://localhost:8501 for configuration
 ```
 
-**Default installation paths:**
-- **macOS/Linux**: `~/.local/share/uv/tools/mcp-jira/bin/mcp_jira-server`
-- **Windows**: `%USERPROFILE%\.local\share\uv\tools\mcp-jira\Scripts\mcp_jira-server.exe`
+**Benefits of uvx:**
+- No persistent installation to manage
+- Always runs in a fresh, isolated environment
+- Automatically downloads updates when available
+- No "uninstall and reinstall" issues
 
-### Quick Start (Use with Caution)
-
-For quick testing with `uvx` (note: may cause dependency conflicts):
-
-```bash
-# Run directly without installation
-uvx mcp_jira-server
-
-# ⚠️ WARNING: This method may conflict with other Python projects
-# If you experience issues, use the recommended method above
-```
+**Note:** uvx downloads the package on first use and caches it. Subsequent runs are faster but still use a fresh environment.
 
 ### From Source (Development)
 
@@ -136,9 +109,10 @@ uv pip install -e .
 
 ### Troubleshooting Installation
 
-**Dependency Conflicts:**
-- If you encounter dependency conflicts, ensure you're using `uv tool install` (recommended method)
-- The isolated installation prevents conflicts with other Python packages
+**Common Issues:**
+- **"Command not found"**: Ensure UV is installed and in your PATH
+- **Port already in use**: Use `--ui-port 8502` (or another port) when launching the UI
+- **Connection errors**: Check your internet connection as uvx downloads packages on demand
 - For development, always use a virtual environment
 
 **Platform-Specific Issues:**
@@ -210,19 +184,18 @@ This project includes a web-based configuration editor built with Streamlit to e
 - The editor automatically uses the same configuration file path logic as the server itself (CLI override, environment variable, or OS-specific default).
 
 ### Running the Editor
-1.  Ensure all project dependencies, including Streamlit, are installed:
-    ```bash
-    uv pip install -e .
-    ```
-2.  From the root of the project directory, run:
-    ```bash
-    streamlit run mcp_jira/ui/app.py
-    ```
-    Or, if `mcp_jira` is installed in your environment and your `PYTHONPATH` is set up:
-    ```bash
-    PYTHONPATH=. streamlit run mcp_jira/ui/app.py
-    ```
-3.  Open the URL provided by Streamlit in your web browser.
+
+Use the `--ui` flag with the MCP server command to launch the configuration interface:
+
+```bash
+# Using uvx (recommended - no installation required)
+uvx --from ctf-mcp-jira ctf-mcp-jira-server --ui
+
+# Or specify a custom port
+uvx --from ctf-mcp-jira ctf-mcp-jira-server --ui --ui-port 8502
+```
+
+This will open your browser with the Streamlit configuration UI at http://localhost:8501 (or your specified port).
 
 ### Screenshot
 
@@ -232,16 +205,23 @@ This project includes a web-based configuration editor built with Streamlit to e
 
 ### Running the MCP Server
 
+When using with Claude Code, the server is automatically started via the `claude mcp add` command shown in the quick setup. For manual testing or other uses:
+
 ```bash
-# Run with stdio transport (default)
-mcp_jira-server
+# Run with stdio transport (default) using uvx
+uvx --from ctf-mcp-jira ctf-mcp-jira-server
 
 # Run with SSE transport
-mcp_jira-server --transport sse --port 3001
+uvx --from ctf-mcp-jira ctf-mcp-jira-server --transport sse --port 3001
 
 # Use custom configuration file
-mcp_jira-server --config /path/to/config.yaml
+uvx --from ctf-mcp-jira ctf-mcp-jira-server --config /path/to/config.yaml
+
+# Launch configuration UI
+uvx --from ctf-mcp-jira ctf-mcp-jira-server --ui
 ```
+
+**Note:** Using `uvx` ensures the server runs in a fresh, isolated environment each time, avoiding potential dependency conflicts.
 
 ### Available Tools
 

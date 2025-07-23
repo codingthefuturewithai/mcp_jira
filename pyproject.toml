@@ -3,8 +3,8 @@ requires = ["setuptools>=45", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "mcp_jira"
-version = "0.1.0"
+name = "ctf-mcp-jira"
+version = "0.1.4"
 description = "MCP server for JIRA integration"
 readme = "README.md"
 authors = [
@@ -27,8 +27,8 @@ dependencies = [
 
 [project.scripts]
 # Single entry point for server that handles both transports
-mcp_jira-server = "mcp_jira.server.app:main"
-mcp_jira-client = "mcp_jira.client.app:main"
+ctf-mcp-jira-server = "mcp_jira.server.app:main"
+ctf-mcp-jira-client = "mcp_jira.client.app:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
