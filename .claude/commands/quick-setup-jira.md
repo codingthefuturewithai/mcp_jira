@@ -60,7 +60,7 @@ The configuration will be saved to:
 Now I'll add the MCP server to Claude Code using the uvx command:
 
 ```bash
-claude mcp add mcp_jira stdio "uvx --from ctf-mcp-jira ctf-mcp-jira-server"
+claude mcp add -t stdio mcp_jira "uvx" -- "--from" "ctf-mcp-jira" "ctf-mcp-jira-server"
 ```
 
 This tells Claude Code to run the MCP server using uvx, which will handle downloading and running the server in an isolated environment.

@@ -30,7 +30,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 uvx --from ctf-mcp-jira ctf-mcp-jira-server --ui
 
 # Add to Claude Code:
-claude mcp add mcp_jira stdio "uvx --from ctf-mcp-jira ctf-mcp-jira-server"
+claude mcp add -t stdio mcp_jira "uvx" -- "--from" "ctf-mcp-jira" "ctf-mcp-jira-server"
 ```
 
 Then restart Claude Code. See full instructions below.

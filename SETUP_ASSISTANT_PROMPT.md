@@ -133,7 +133,7 @@ The configuration UI from Step 2 will guide you through setup. If you need to ed
 
 ```bash
 # Add the MCP server to Claude Code
-claude mcp add mcp_jira stdio "uvx --from ctf-mcp-jira ctf-mcp-jira-server"
+claude mcp add -t stdio mcp_jira "uvx" -- "--from" "ctf-mcp-jira" "ctf-mcp-jira-server"
 ```
 
 This command tells Claude Code to use UVX to run the MCP server, which ensures it always runs in a fresh environment.
