@@ -346,8 +346,34 @@ server: FastMCP = create_mcp_server()
     show_default=True,
     help="Transport type (stdio or sse).",
 )
-def main(config_path_override: Optional[str], port: int, transport: str) -> int:
+@click.option(
+    "--ui",
+    is_flag=True,
+    help="Launch the web configuration interface",
+)
+@click.option(
+    "--ui-port", 
+    type=int,
+    default=8501,
+    help="Port to run the web interface on (default: 8501). Only used with --ui",
+)
+def main(config_path_override: Optional[str], port: int, transport: str, ui: bool, ui_port: int) -> int:
     """Run the MCP JIRA server with specified transport and configuration."""
+    # Handle UI launch FIRST, before any imports that trigger validation
+    if ui:
+        import streamlit.web.cli as stcli
+        import sys
+        from pathlib import Path
+        
+        # Get the path to the UI app.py
+        ui_script = Path(__file__).parent.parent / "ui" / "app.py"
+        
+        # Set up sys.argv to run streamlit
+        sys.argv = ["streamlit", "run", str(ui_script), "--server.port", str(ui_port)]
+        
+        # Exit with streamlit - never reaches server code
+        sys.exit(stcli.main())
+    
     try:
         # Create a new server instance for this specific CLI execution,
         # configured by CLI args if provided, otherwise default.

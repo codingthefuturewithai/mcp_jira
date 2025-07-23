@@ -13,28 +13,21 @@ APP_AUTHOR = "MCPJira"  # Or your specific author string for platformdirs
 # Get a logger for this module
 logger = logging.getLogger(__name__)
 
-CONFIG_TEMPLATE = """# Please uncomment and fill in your JIRA site details below.
-# The server will not function correctly until this file is properly configured.
-# You can define multiple JIRA sites, each with a unique alias.
-#
-# name: "MCP Jira Server"  # Optional: A friendly name for this server instance
-# log_level: "INFO"        # Optional: "DEBUG", "INFO", "WARNING", "ERROR"
-#
-# default_site_alias: "my_primary_jira" # REQUIRED: Alias of one of your defined sites below
-#
-# sites: # REQUIRED: At least one site must be defined
-#   my_primary_jira: # This is an alias, you can name it anything (e.g., "work_jira", "personal_jira")
-#     url: "https://your-domain.atlassian.net"  # REQUIRED: Your JIRA instance URL
-#     email: "your-email@example.com"          # REQUIRED: Your JIRA login email
-#     api_token: "YOUR_ATLASSIAN_API_TOKEN"    # REQUIRED: Your JIRA API token
-#     cloud: true                              # Optional: true for JIRA Cloud, false for JIRA Server/Data Center. Defaults to true.
-#
-#   # Example of a second site definition (optional):
-#   # another_site_example:
-#   #   url: "https://another-jira.example.com"
-#   #   email: "user@another-example.com"
-#   #   api_token: "ANOTHER_API_TOKEN"
-#   #   cloud: false
+CONFIG_TEMPLATE = """# MCP JIRA Server Configuration
+# Please update the placeholder values below with your actual JIRA details.
+# You can configure multiple JIRA sites, each with a unique alias.
+
+name: "MCP JIRA Server"
+log_level: "INFO"
+
+default_site_alias: "primary"
+
+sites:
+  primary:
+    url: "https://your-domain.atlassian.net"
+    email: "your-email@example.com"
+    api_token: "YOUR_API_TOKEN_HERE"
+    cloud: true
 """
 
 @dataclass
