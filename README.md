@@ -2,6 +2,10 @@
 
 A Model Context Protocol (MCP) server that provides seamless JIRA integration for AI tools. Create and manage JIRA issues with rich markdown formatting, automatic conversion to Atlassian Document Format (ADF), and flexible field management.
 
+<a href="https://glama.ai/mcp/servers/@codingthefuturewithai/mcp_jira">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@codingthefuturewithai/mcp_jira/badge" alt="JIRA Server MCP server" />
+</a>
+
 ## Quick Setup with Claude Code
 
 ### 🚀 Let AI Help You Set Up
